@@ -39,10 +39,17 @@ export function getInitials(name: string): string {
     .toUpperCase()
 }
 
+function normalizeBaseUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/$/, '')
+  const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed)
+  return hasScheme ? trimmed : `https://${trimmed}`
+}
+
 export function getQRUrl(costumeId: string): string {
   const baseUrl =
     typeof window !== 'undefined'
       ? window.location.origin
       : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  return `${baseUrl}/qr/${costumeId}`
+
+  return `${normalizeBaseUrl(baseUrl)}/qr/${costumeId}`
 }
