@@ -11,9 +11,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { costumeService } from '@/lib/services/costume.service'
+import { eventService } from '@/lib/services/event.service'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/utils'
-import type { Costume } from '@/types'
+import type { Costume, Event } from '@/types'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -35,6 +36,8 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<{ id: string; full_name: string; role: string } | null>(null)
   const [selectedAction, setSelectedAction] = useState<ActionType | null>(null)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [events, setEvents] = useState<Event[]>([])
   const [notes, setNotes] = useState('')
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('medium')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
@@ -60,8 +63,13 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
 
         setUser(userData)
 
-        const costumeData = await costumeService.getById(id)
+        const [costumeData, eventsData] = await Promise.all([
+          costumeService.getById(id),
+          eventService.getAll(),
+        ])
+
         setCostume(costumeData)
+        setEvents(eventsData)
       } catch {
         toast.error('Error al cargar')
       } finally {
@@ -73,6 +81,16 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
 
   const handleSubmit = async () => {
     if (!selectedAction || !user || !costume) return
+
+    if (selectedAction === 'checkout' && !selectedEventId) {
+      toast.error('Selecciona un evento para registrar el retiro')
+      return
+    }
+
+    if (selectedAction === 'damage' && !photoFile) {
+      toast.error('Debes tomar una foto del daño antes de confirmarlo')
+      return
+    }
 
     try {
       setSubmitting(true)
@@ -101,7 +119,11 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
           costume.id,
           statusMap[selectedAction as keyof typeof statusMap],
           user.id,
-          { notes: notes || undefined, photoUrl }
+          {
+            eventId: selectedAction === 'checkout' ? selectedEventId ?? undefined : undefined,
+            notes: notes || undefined,
+            photoUrl,
+          }
         )
       }
 
@@ -248,6 +270,25 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
         {/* Action form */}
         {selectedAction && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
+            {selectedAction === 'checkout' && (
+              <div>
+                <Label>¿Para qué evento?</Label>
+                <Select value={selectedEventId || ''} onValueChange={(value) => setSelectedEventId(value || null)}>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue>{selectedEventId ? events.find((event) => event.id === selectedEventId)?.name : 'Selecciona un evento'}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Selecciona un evento</SelectItem>
+                    {events.map((event) => (
+                      <SelectItem key={event.id} value={event.id}>
+                        {event.name} – {formatDate(event.date)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {selectedAction === 'damage' && (
               <div>
                 <Label>Severidad del daño</Label>
