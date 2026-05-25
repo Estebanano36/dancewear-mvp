@@ -41,6 +41,8 @@ export function getInitials(name: string): string {
 
 export function getQRUrl(costumeId: string): string {
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   return `${baseUrl}/qr/${costumeId}`
 }
