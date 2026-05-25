@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🩰 DanceWear MVP
 
 Sistema web profesional para gestión de vestuarios de academia de baile.
@@ -82,3 +83,6 @@ Agrega las 3 variables de entorno en Vercel Settings.
 
 ## 🛠 Stack
 Next.js 15 · React · TailwindCSS · Supabase · TypeScript · Vercel
+=======
+# dancewear-mvp
+>>>>>>> 81ad00af0d036372a60863d47ae747897250bfc5
