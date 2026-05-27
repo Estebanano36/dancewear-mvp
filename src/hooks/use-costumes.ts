@@ -46,6 +46,10 @@ export function useCostumes(initialFilters?: Filters) {
     )
   }
 
+  const removeCostume = (id: string) => {
+    setCostumes((prev) => prev.filter((c) => c.id !== id))
+  }
+
   return {
     costumes,
     loading,
@@ -55,5 +59,6 @@ export function useCostumes(initialFilters?: Filters) {
     clearFilters,
     refetch: fetchCostumes,
     updateCostumeOptimistic,
+    removeCostume,
   }
 }

@@ -36,7 +36,7 @@ function InventoryContent() {
   const [qrCostume, setQrCostume] = useState<Costume | null>(null)
   const [searchInput, setSearchInput] = useState('')
 
-  const { costumes, loading, filters, updateFilter, clearFilters, refetch } = useCostumes({
+  const { costumes, loading, filters, updateFilter, clearFilters, refetch, removeCostume } = useCostumes({
     status: searchParams.get('status') as CostumeStatus || undefined,
   })
 
@@ -156,7 +156,10 @@ function InventoryContent() {
                 key={costume.id}
                 costume={costume}
                 onQRClick={setQrCostume}
-                onDelete={refetch}
+                onDelete={(id) => {
+                  removeCostume(id)
+                  refetch()
+                }}
               />
             ))
           )}
@@ -225,6 +228,7 @@ function InventoryContent() {
                                 if (!confirm('¿Eliminar este vestuario? Esta acción no se puede deshacer.')) return
                                 try {
                                   await costumeService.delete(costume.id)
+                                  removeCostume(costume.id)
                                   refetch()
                                 } catch (err) {
                                   toast.error('Error al eliminar el vestuario')
