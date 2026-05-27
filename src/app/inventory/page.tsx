@@ -12,6 +12,7 @@ import { CreateCostumeModal } from '@/components/costumes/create-costume-modal'
 import { QRModal } from '@/components/qr/qr-modal'
 import { useCostumes } from '@/hooks/use-costumes'
 import { useUser } from '@/hooks/use-user'
+import { costumeService } from '@/lib/services/costume.service'
 import { COSTUME_CATEGORIES } from '@/types'
 import type { Costume, CostumeStatus } from '@/types'
 import { formatDate } from '@/utils'
@@ -154,6 +155,7 @@ function InventoryContent() {
                 key={costume.id}
                 costume={costume}
                 onQRClick={setQrCostume}
+                onDelete={refetch}
               />
             ))
           )}
@@ -208,9 +210,28 @@ function InventoryContent() {
                         {formatDate(costume.updated_at)}
                       </td>
                       <td className="p-4">
-                        <Link href={`/inventory/${costume.id}`}>
-                          <Button variant="ghost" size="sm" className="text-xs">Ver</Button>
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/inventory/${costume.id}`}>
+                            <Button variant="ghost" size="sm" className="text-xs">Ver</Button>
+                          </Link>
+                          {user?.role === 'coordinator' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs text-red-600"
+                              onClick={async () => {
+                                if (!confirm('¿Eliminar este vestuario? Esta acción no se puede deshacer.')) return
+                                try {
+                                  await costumeService.delete(costume.id)
+                                  refetch()
+                                } catch (err) {
+                                  // eslint-disable-next-line no-alert
+                                  alert('Error al eliminar el vestuario')
+                                }
+                              }}
+                            >Eliminar</Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

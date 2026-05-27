@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,23 +85,6 @@ export default function LoginPage() {
               Ingresar
             </Button>
           </form>
-
-          <p className="text-center text-sm text-gray-500 mt-4">
-            ¿No tienes cuenta?{' '}
-            <Link href="/register" className="text-violet-600 font-medium hover:underline">
-              Regístrate
-            </Link>
-          </p>
-        </div>
-
-        {/* Demo credentials */}
-        <div className="mt-4 p-3 bg-violet-50 rounded-xl border border-violet-100">
-          <p className="text-xs font-semibold text-violet-700 mb-1.5">Credenciales de demo:</p>
-          <div className="space-y-0.5">
-            <p className="text-xs text-violet-600">📋 Coordinador: coordinador@demo.com</p>
-            <p className="text-xs text-violet-600">💃 Bailarín: bailarin@demo.com</p>
-            <p className="text-xs text-violet-500 mt-1">Contraseña: Demo1234!</p>
-          </div>
         </div>
       </div>
     </div>

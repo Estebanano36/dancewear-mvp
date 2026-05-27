@@ -213,4 +213,10 @@ export const costumeService = {
 
     return stats
   },
+
+  async delete(id: string): Promise<void> {
+    const supabase = createClient()
+    const { error } = await supabase.from('costumes').delete().eq('id', id)
+    if (error) throw error
+  },
 }

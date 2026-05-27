@@ -1,18 +1,33 @@
 'use client'
 
-import { Shirt, QrCode, User, Calendar, MapPin } from 'lucide-react'
+import { Shirt, QrCode, User, Calendar, MapPin, Trash } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import type { Costume } from '@/types'
 import { formatDate } from '@/utils'
 import Link from 'next/link'
+import { useUser } from '@/hooks/use-user'
+import { costumeService } from '@/lib/services/costume.service'
 
 interface CostumeCardProps {
   costume: Costume
   onQRClick?: (costume: Costume) => void
+  onDelete?: (id: string) => void
 }
 
-export function CostumeCard({ costume, onQRClick }: CostumeCardProps) {
+export function CostumeCard({ costume, onQRClick, onDelete }: CostumeCardProps) {
+  const { user } = useUser()
+
+  const handleDelete = async () => {
+    if (!confirm('¿Eliminar este vestuario? Esta acción no se puede deshacer.')) return
+    try {
+      await costumeService.delete(costume.id)
+      onDelete?.(costume.id)
+    } catch (err) {
+      // eslint-disable-next-line no-alert
+      alert('Error al eliminar el vestuario')
+    }
+  }
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group">
       {/* Photo or placeholder */}
@@ -82,6 +97,16 @@ export function CostumeCard({ costume, onQRClick }: CostumeCardProps) {
           >
             <QrCode className="w-4 h-4 text-gray-500" />
           </Button>
+          {user?.role === 'coordinator' && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleDelete}
+              title="Eliminar vestuario"
+            >
+              <Trash className="w-4 h-4 text-red-500" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
