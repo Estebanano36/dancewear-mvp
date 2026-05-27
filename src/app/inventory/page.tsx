@@ -48,7 +48,7 @@ function InventoryContent() {
       await refetch()
       toast.success('Vestuario eliminado')
     } catch (err) {
-      toast.error('Error al eliminar el vestuario')
+      toast.error(err instanceof Error ? err.message : 'Error al eliminar el vestuario')
     }
   }
 

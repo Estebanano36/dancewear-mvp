@@ -177,7 +177,7 @@ create policy "Users can update own profile" on public.users
 create policy "Costumes viewable by authenticated" on public.costumes
   for select using (auth.role() = 'authenticated');
 
--- Costumes: coordinadores pueden insertar/actualizar
+-- Costumes: coordinadores pueden insertar/actualizar/borrar
 create policy "Coordinators can insert costumes" on public.costumes
   for insert with check (
     exists (select 1 from public.users where id = auth.uid() and role = 'coordinator')
@@ -185,6 +185,11 @@ create policy "Coordinators can insert costumes" on public.costumes
 
 create policy "Costumes updatable by authenticated" on public.costumes
   for update using (auth.role() = 'authenticated');
+
+create policy "Coordinators can delete costumes" on public.costumes
+  for delete using (
+    exists (select 1 from public.users where id = auth.uid() and role = 'coordinator')
+  );
 
 -- Movements: todos pueden leer y crear
 create policy "Movements viewable by authenticated" on public.costume_movements
