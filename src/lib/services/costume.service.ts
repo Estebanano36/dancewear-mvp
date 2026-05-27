@@ -215,9 +215,13 @@ export const costumeService = {
   },
 
   async delete(id: string): Promise<void> {
-    const supabase = createClient()
-    const { data, error } = await supabase.from('costumes').delete().eq('id', id).select()
-    if (error) throw error
-    if (!data || data.length === 0) throw new Error('No se encontró el vestuario para eliminar')
+    const response = await fetch(`/api/costumes/${id}`, {
+      method: 'DELETE',
+    })
+
+    const result = await response.json()
+    if (!response.ok) {
+      throw new Error(result?.error || 'Error al eliminar el vestuario')
+    }
   },
 }
