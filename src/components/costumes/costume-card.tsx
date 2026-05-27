@@ -7,8 +7,6 @@ import type { Costume } from '@/types'
 import { formatDate } from '@/utils'
 import Link from 'next/link'
 import { useUser } from '@/hooks/use-user'
-import { costumeService } from '@/lib/services/costume.service'
-import { toast } from 'sonner'
 
 interface CostumeCardProps {
   costume: Costume
@@ -19,15 +17,8 @@ interface CostumeCardProps {
 export function CostumeCard({ costume, onQRClick, onDelete }: CostumeCardProps) {
   const { user } = useUser()
 
-  const handleDelete = async () => {
-    if (!confirm('¿Eliminar este vestuario? Esta acción no se puede deshacer.')) return
-    try {
-      await costumeService.delete(costume.id)
-      toast.success('Vestuario eliminado')
-      onDelete?.(costume.id)
-    } catch (err) {
-      toast.error('Error al eliminar el vestuario')
-    }
+  const handleDelete = () => {
+    onDelete?.(costume.id)
   }
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group">

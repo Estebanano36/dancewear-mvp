@@ -36,9 +36,20 @@ function InventoryContent() {
   const [qrCostume, setQrCostume] = useState<Costume | null>(null)
   const [searchInput, setSearchInput] = useState('')
 
-  const { costumes, loading, filters, updateFilter, clearFilters, refetch, removeCostume } = useCostumes({
+  const { costumes, loading, filters, updateFilter, clearFilters, refetch } = useCostumes({
     status: searchParams.get('status') as CostumeStatus || undefined,
   })
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Eliminar este vestuario? Esta acción no se puede deshacer.')) return
+    try {
+      await costumeService.delete(id)
+      toast.success('Vestuario eliminado')
+      refetch()
+    } catch (err) {
+      toast.error('Error al eliminar el vestuario')
+    }
+  }
 
   const handleSearch = (value: string) => {
     setSearchInput(value)
@@ -156,10 +167,7 @@ function InventoryContent() {
                 key={costume.id}
                 costume={costume}
                 onQRClick={setQrCostume}
-                onDelete={(id) => {
-                  removeCostume(id)
-                  refetch()
-                }}
+                onDelete={handleDelete}
               />
             ))
           )}
@@ -224,16 +232,7 @@ function InventoryContent() {
                               variant="ghost"
                               size="sm"
                               className="text-xs text-red-600"
-                              onClick={async () => {
-                                if (!confirm('¿Eliminar este vestuario? Esta acción no se puede deshacer.')) return
-                                try {
-                                  await costumeService.delete(costume.id)
-                                  removeCostume(costume.id)
-                                  refetch()
-                                } catch (err) {
-                                  toast.error('Error al eliminar el vestuario')
-                                }
-                              }}
+                              onClick={() => handleDelete(costume.id)}
                             >Eliminar</Button>
                           )}
                         </div>
