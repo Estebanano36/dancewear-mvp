@@ -85,11 +85,11 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             {/* Avatar */}
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center flex-shrink-0 overflow-hidden p-2">
                 {user?.full_name ? (
-                  <span className="text-white text-xl font-bold">{getInitials(user.full_name)}</span>
+                  <span className="text-gray-900 text-xl font-bold">{getInitials(user.full_name)}</span>
                 ) : (
-                  <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-cover" />
+                  <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain" />
                 )}
               </div>
               <div>
@@ -172,8 +172,8 @@ export default function SettingsPage() {
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center overflow-hidden">
-                <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-cover rounded-xl" />
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden p-2">
+                <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain rounded-xl" />
               </div>
               <div>
                 <p className="font-semibold text-gray-800">ArabelaEspectaculos MVP</p>

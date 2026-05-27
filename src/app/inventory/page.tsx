@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Plus, Search, Filter, Grid, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { CostumeCard } from '@/components/costumes/costume-card'
@@ -216,6 +217,7 @@ function InventoryContent() {
                           </Link>
                           {user?.role === 'coordinator' && (
                             <Button
+                              type="button"
                               variant="ghost"
                               size="sm"
                               className="text-xs text-red-600"
@@ -225,8 +227,7 @@ function InventoryContent() {
                                   await costumeService.delete(costume.id)
                                   refetch()
                                 } catch (err) {
-                                  // eslint-disable-next-line no-alert
-                                  alert('Error al eliminar el vestuario')
+                                  toast.error('Error al eliminar el vestuario')
                                 }
                               }}
                             >Eliminar</Button>

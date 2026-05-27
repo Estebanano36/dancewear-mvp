@@ -39,8 +39,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-200 overflow-hidden">
-            <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-cover rounded-2xl" />
+          <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-200 overflow-hidden p-2">
+            <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain rounded-2xl" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">ArabelaEspectaculos</h1>
           <p className="text-gray-500 text-sm mt-1">Ingresa a tu cuenta</p>

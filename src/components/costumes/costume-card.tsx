@@ -8,6 +8,7 @@ import { formatDate } from '@/utils'
 import Link from 'next/link'
 import { useUser } from '@/hooks/use-user'
 import { costumeService } from '@/lib/services/costume.service'
+import { toast } from 'sonner'
 
 interface CostumeCardProps {
   costume: Costume
@@ -22,10 +23,10 @@ export function CostumeCard({ costume, onQRClick, onDelete }: CostumeCardProps) 
     if (!confirm('¿Eliminar este vestuario? Esta acción no se puede deshacer.')) return
     try {
       await costumeService.delete(costume.id)
+      toast.success('Vestuario eliminado')
       onDelete?.(costume.id)
     } catch (err) {
-      // eslint-disable-next-line no-alert
-      alert('Error al eliminar el vestuario')
+      toast.error('Error al eliminar el vestuario')
     }
   }
   return (
@@ -90,6 +91,7 @@ export function CostumeCard({ costume, onQRClick, onDelete }: CostumeCardProps) 
             </Button>
           </Link>
           <Button
+            type="button"
             variant="ghost"
             size="icon-sm"
             onClick={() => onQRClick?.(costume)}
@@ -99,6 +101,7 @@ export function CostumeCard({ costume, onQRClick, onDelete }: CostumeCardProps) 
           </Button>
           {user?.role === 'coordinator' && (
             <Button
+              type="button"
               variant="ghost"
               size="icon-sm"
               onClick={handleDelete}
