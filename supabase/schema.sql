@@ -1,5 +1,5 @@
 -- ============================================================
--- DanceWear MVP - Supabase SQL Schema
+-- ArabelaEspectaculos MVP - Supabase SQL Schema
 -- Ejecutar en el SQL Editor de Supabase (en orden)
 -- ============================================================
 

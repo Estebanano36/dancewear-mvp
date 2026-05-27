@@ -3,7 +3,7 @@ import { Toaster } from 'sonner'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'DanceWear — Gestión de Vestuarios',
+  title: 'ArabelaEspectaculos — Gestión de Vestuarios',
   description: 'Sistema de control de vestuarios para academia de baile',
 }
 

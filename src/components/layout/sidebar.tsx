@@ -52,11 +52,12 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Logo */}
       <div className="p-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-200">
-            <span className="text-white text-lg">🩰</span>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-200 overflow-hidden">
+            {/* Replace generic logo with project logo placed in /public/Logo.jpeg */}
+            <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-cover" />
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">DanceWear</p>
+            <p className="text-sm font-bold text-gray-900 leading-tight">ArabelaEspectaculos</p>
             <p className="text-xs text-gray-400">Gestión de vestuarios</p>
           </div>
         </div>
@@ -121,10 +122,10 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white">🩰</span>
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center overflow-hidden">
+            <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-cover" />
           </div>
-          <span className="font-bold text-gray-900">DanceWear</span>
+          <span className="font-bold text-gray-900">ArabelaEspectaculos</span>
         </div>
         <button
           onClick={() => setMobileOpen(true)}

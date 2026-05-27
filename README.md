@@ -1,5 +1,5 @@
 <<<<<<< HEAD
-# 🩰 DanceWear MVP
+# 🩰 ArabelaEspectaculos MVP
 
 Sistema web profesional para gestión de vestuarios de academia de baile.
 Control de inventario en tiempo real, trazabilidad completa, QR codes y experiencia mobile-first.

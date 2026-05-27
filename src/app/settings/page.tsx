@@ -85,10 +85,12 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             {/* Avatar */}
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xl font-bold">
-                  {user?.full_name ? getInitials(user.full_name) : 'U'}
-                </span>
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {user?.full_name ? (
+                  <span className="text-white text-xl font-bold">{getInitials(user.full_name)}</span>
+                ) : (
+                  <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-cover" />
+                )}
               </div>
               <div>
                 <p className="font-semibold text-gray-800">{user?.full_name}</p>
@@ -170,11 +172,11 @@ export default function SettingsPage() {
         <Card>
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <span className="text-xl">🩰</span>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-cover rounded-xl" />
               </div>
               <div>
-                <p className="font-semibold text-gray-800">DanceWear MVP</p>
+                <p className="font-semibold text-gray-800">ArabelaEspectaculos MVP</p>
                 <p className="text-xs text-gray-400">v1.0.0 · Gestión de vestuarios</p>
               </div>
             </div>
