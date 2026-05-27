@@ -4,8 +4,9 @@ import { NextResponse } from 'next/server'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -34,7 +35,7 @@ export async function DELETE(
   const { data, error } = await supabase
     .from('costumes')
     .delete()
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
 
   if (error) {
