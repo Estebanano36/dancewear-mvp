@@ -28,19 +28,19 @@ export function StatCard({ title, value, icon, color, bgColor, borderColor, subt
     <button
       onClick={onClick}
       className={cn(
-        'rounded-xl border bg-white p-5 shadow-sm text-left w-full transition-all duration-200',
-        onClick ? 'hover:shadow-md hover:-translate-y-0.5 cursor-pointer' : 'cursor-default',
+        'glass-card p-5 text-left w-full transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_-24px_rgba(124,58,237,0.45)]',
+        onClick ? 'cursor-pointer' : 'cursor-default',
         borderColor
       )}
     >
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-sm font-medium text-gray-500">{title}</span>
-        <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', bgColor)}>
-          <span className={color}>{icon}</span>
+      <div className="flex items-start justify-between mb-4">
+        <span className="text-sm font-semibold text-gray-500">{title}</span>
+        <div className={cn('w-11 h-11 rounded-2xl flex items-center justify-center soft-ring', bgColor)}>
+          <span className={cn('text-lg', color)}>{icon}</span>
         </div>
       </div>
-      <p className={cn('text-3xl font-bold', color)}>{value}</p>
-      {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
+      <p className={cn('text-3xl font-black tracking-tight', color)}>{value}</p>
+      {subtitle ? <p className="text-xs text-gray-400 mt-1">{subtitle}</p> : <p className="text-xs text-transparent mt-1">.</p>}
     </button>
   )
 }

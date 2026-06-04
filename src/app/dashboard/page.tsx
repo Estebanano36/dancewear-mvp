@@ -84,16 +84,32 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Vista general del inventario</p>
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-600">Dashboard</p>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900">Tu inventario, con una mirada premium</h1>
+          <p className="text-sm text-gray-500 max-w-2xl">Resumen claro de prendas, movimientos y estado del inventario para tomar decisiones rápidas y con estilo.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData}>
+        <Button variant="outline" size="sm" onClick={fetchData} className="rounded-2xl border-violet-200 bg-white/80 hover:bg-violet-50">
           <RefreshCw className="w-3.5 h-3.5" />
           Actualizar
         </Button>
+      </div>
+
+      <div className="mb-6 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-600 via-violet-500 to-indigo-600 p-6 text-white shadow-[0_25px_45px_-25px_rgba(124,58,237,0.65)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-[0.35em] text-violet-100">Resumen del día</p>
+            <h2 className="text-xl font-semibold">Control visual y rápido del inventario</h2>
+            <p className="text-sm text-violet-100 max-w-xl">Monitorea disponibilidad, alertas y actividad reciente sin perder tiempo en pantallas saturadas.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-2xl bg-white/12 p-3 backdrop-blur-md">{stats?.available ?? 0} disponibles</div>
+            <div className="rounded-2xl bg-white/12 p-3 backdrop-blur-md">{stats?.borrowed ?? 0} prestados</div>
+            <div className="rounded-2xl bg-white/12 p-3 backdrop-blur-md">{stats?.repair ?? 0} en arreglo</div>
+            <div className="rounded-2xl bg-white/12 p-3 backdrop-blur-md">{recentMovements.length} movimientos</div>
+          </div>
+        </div>
       </div>
 
       {/* Stats grid */}
@@ -182,10 +198,13 @@ export default function DashboardPage() {
 
       {/* Recent activity */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="p-5 border-b border-gray-50 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Actividad reciente</h2>
-            <Calendar className="w-4 h-4 text-gray-400" />
+        <div className="glass-card overflow-hidden">
+          <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-900">Actividad reciente</h2>
+              <p className="text-xs text-gray-400">Últimos movimientos del inventario</p>
+            </div>
+            <div className="rounded-2xl bg-violet-50 p-2 text-violet-600"><Calendar className="w-4 h-4" /></div>
           </div>
           <div className="divide-y divide-gray-50">
             {loading ? (
@@ -230,9 +249,10 @@ export default function DashboardPage() {
         </div>
 
         {/* Status breakdown */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-          <div className="p-5 border-b border-gray-50">
+        <div className="glass-card overflow-hidden">
+          <div className="p-5 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900">Estado del inventario</h2>
+            <p className="text-xs text-gray-400">Distribución por estado actual</p>
           </div>
           <div className="p-5 space-y-3">
             {stats ? (
