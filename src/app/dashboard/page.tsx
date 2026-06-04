@@ -85,23 +85,22 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-600">Dashboard</p>
-          <h1 className="text-2xl md:text-3xl font-black text-gray-900">Tu inventario, con una mirada premium</h1>
-          <p className="text-sm text-gray-500 max-w-2xl">Resumen claro de prendas, movimientos y estado del inventario para tomar decisiones rápidas y con estilo.</p>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-violet-600">Dashboard</p>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900">Resumen del día</h1>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} className="rounded-2xl border-violet-200 bg-white/80 hover:bg-violet-50">
+        <Button variant="outline" size="sm" onClick={fetchData} className="rounded-2xl border-violet-200 bg-white/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-violet-50 hover:shadow-md">
           <RefreshCw className="w-3.5 h-3.5" />
           Actualizar
         </Button>
       </div>
 
-      <div className="mb-6 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-600 via-violet-500 to-indigo-600 p-6 text-white shadow-[0_25px_45px_-25px_rgba(124,58,237,0.65)]">
+      <div className="mb-6 rounded-3xl border border-violet-100 bg-gradient-to-br from-violet-700 via-violet-600 to-indigo-600 p-6 text-white shadow-[0_28px_50px_-24px_rgba(76,29,149,0.65)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.35em] text-violet-100">Resumen del día</p>
-            <h2 className="text-xl font-semibold">Control visual y rápido del inventario</h2>
-            <p className="text-sm text-violet-100 max-w-xl">Monitorea disponibilidad, alertas y actividad reciente sin perder tiempo en pantallas saturadas.</p>
+            <h2 className="text-xl font-semibold">Estado general del inventario</h2>
+            <p className="text-sm text-violet-100/95 max-w-xl">Consulta el estado de tus prendas, movimientos recientes y disponibilidad en una sola vista clara.</p>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-2xl bg-white/12 p-3 backdrop-blur-md">{stats?.available ?? 0} disponibles</div>
