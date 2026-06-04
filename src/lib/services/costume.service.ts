@@ -215,13 +215,15 @@ export const costumeService = {
   },
 
   async delete(id: string): Promise<void> {
-    const response = await fetch(`/api/costumes/${id}`, {
-      method: 'DELETE',
-    })
+    const supabase = createClient()
 
-    const result = await response.json()
-    if (!response.ok) {
-      throw new Error(result?.error || 'Error al eliminar el vestuario')
+    const { error } = await supabase
+      .from('costumes')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      throw new Error(error.message || 'Error al eliminar el vestuario')
     }
   },
 }
