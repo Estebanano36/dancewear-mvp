@@ -45,7 +45,6 @@ function InventoryContent() {
     try {
       await costumeService.delete(id)
       removeCostume(id)
-      await refetch()
       toast.success('Vestuario eliminado')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al eliminar el vestuario')
