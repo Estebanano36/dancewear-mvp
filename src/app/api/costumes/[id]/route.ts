@@ -14,14 +14,15 @@ export async function DELETE(
     return NextResponse.json({ error: 'Configuración de Supabase incompleta' }, { status: 500 })
   }
 
+  const cookieStore = await cookies()
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
-        return cookies().getAll()
+        return cookieStore.getAll()
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) =>
-          cookies().set(name, value, options)
+          cookieStore.set(name, value, options)
         )
       },
     },
