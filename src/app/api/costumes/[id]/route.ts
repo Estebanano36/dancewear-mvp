@@ -33,18 +33,27 @@ export async function DELETE(
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const { data, error } = await supabase
+  const { data: existingCostume, error: fetchError } = await supabase
+    .from('costumes')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  }
+
+  if (!existingCostume) {
+    return NextResponse.json({ error: 'No se encontró el vestuario para eliminar' }, { status: 404 })
+  }
+
+  const { error: deleteError } = await supabase
     .from('costumes')
     .delete()
     .eq('id', id)
-    .select()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  if (!data || data.length === 0) {
-    return NextResponse.json({ error: 'No se encontró el vestuario para eliminar' }, { status: 404 })
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 500 })
   }
 
   return NextResponse.json({ success: true }, { status: 200 })
