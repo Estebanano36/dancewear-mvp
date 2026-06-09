@@ -70,6 +70,28 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
 
         setCostume(costumeData)
         setEvents(eventsData)
+        // Auto-assign: si el usuario es bailarin, el vestuario está disponible y hay exactamente
+        // un evento próximo, asignarlo automáticamente para agilizar el flujo QR.
+        if (
+          userData?.role === 'dancer' &&
+          costumeData &&
+          (costumeData.status === 'available' || costumeData.status === 'reserved') &&
+          eventsData.length === 1
+        ) {
+          try {
+            const ev = eventsData[0]
+            await fetch('/api/costumes/assign', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ costumeId: costumeData.id, eventId: ev.id }),
+            })
+            toast.success('Vestuario asignado automáticamente al evento')
+            router.refresh()
+            return
+          } catch (e) {
+            // silenciar; el usuario verá la UI normal
+          }
+        }
       } catch {
         toast.error('Error al cargar')
       } finally {
@@ -126,6 +148,9 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
           }
         )
       }
+
+      // If the action was checkout and user selected an event, we also support a fast assign flow
+      // (records already created by updateStatus)
 
       setDone(true)
     } catch (err) {
@@ -247,7 +272,11 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
         {/* Action selector */}
         <p className="text-sm font-semibold text-gray-600 mb-3">¿Qué deseas hacer?</p>
         <div className="grid grid-cols-3 gap-2 mb-4">
-          {actions.map((action) => {
+          {(() => {
+            const allowed = user && (user.role === 'coordinator' || user.role === 'admin')
+              ? actions
+              : actions.filter(a => ['checkout', 'return', 'damage'].includes(a.id))
+            return allowed.map((action) => {
             const Icon = action.icon
             const isSelected = selectedAction === action.id
             return (
@@ -264,7 +293,8 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
                 <span className="text-xs font-semibold">{action.label}</span>
               </button>
             )
-          })}
+            })
+          })()}
         </div>
 
         {/* Action form */}
@@ -344,6 +374,38 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
             >
               {submitting ? 'Procesando...' : 'Confirmar acción'}
             </Button>
+            {selectedAction === 'checkout' && (
+              <Button
+                onClick={async () => {
+                  if (!user || !costume) return
+                  if (!selectedEventId) {
+                    toast.error('Selecciona un evento para asignar el vestuario a tu cuenta')
+                    return
+                  }
+                  try {
+                    setSubmitting(true)
+                    const res = await fetch('/api/costumes/assign', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ costumeId: costume.id, eventId: selectedEventId }),
+                    })
+                    const json = await res.json()
+                    if (!res.ok) throw new Error(json?.error || 'Error al asignar')
+                    toast.success('Vestuario asignado a tu cuenta')
+                    setDone(true)
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : 'Error')
+                  } finally {
+                    setSubmitting(false)
+                  }
+                }}
+                size="xl"
+                className="w-full mt-2"
+                variant="secondary"
+              >
+                Asignar a mi cuenta
+              </Button>
+            )}
           </div>
         )}
 

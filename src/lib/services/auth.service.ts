@@ -9,7 +9,7 @@ export const authService = {
     return data
   },
 
-  async signUp(email: string, password: string, fullName: string, role: 'coordinator' | 'dancer' = 'dancer') {
+  async signUp(email: string, password: string, fullName: string, role: 'admin' | 'coordinator' | 'dancer' = 'dancer') {
     const supabase = createClient()
     const { data, error } = await supabase.auth.signUp({
       email,

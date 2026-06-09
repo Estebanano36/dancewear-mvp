@@ -50,9 +50,13 @@ export const costumeService = {
   async create(costume: Omit<Costume, 'id' | 'created_at' | 'updated_at' | 'code'>): Promise<Costume> {
     const supabase = createClient()
     const code = generateCostumeCode()
+    const qrToken = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
     const { data, error } = await supabase
       .from('costumes')
-      .insert({ ...costume, code, status: 'available' })
+      .insert({ ...costume, code, qr_token: qrToken, status: 'available' })
       .select()
       .single()
 

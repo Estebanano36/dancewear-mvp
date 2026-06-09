@@ -6,7 +6,7 @@ export type CostumeStatus =
   | 'repair'
   | 'lost'
 
-export type UserRole = 'coordinator' | 'dancer'
+export type UserRole = 'admin' | 'coordinator' | 'dancer'
 
 export type MovementAction =
   | 'checkout'
@@ -16,6 +16,7 @@ export type MovementAction =
   | 'mark_lost'
   | 'damage_report'
   | 'status_change'
+  | 'assign'
 
 export interface User {
   id: string
@@ -29,6 +30,7 @@ export interface User {
 export interface Costume {
   id: string
   code: string
+  qr_token?: string
   name: string
   category: string
   size: string

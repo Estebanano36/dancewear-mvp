@@ -126,7 +126,7 @@ export default function SettingsPage() {
               <div className="mt-1.5 flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
                 <Shield className="w-4 h-4 text-gray-400" />
                 <span className="text-sm text-gray-700 capitalize">
-                  {user?.role === 'coordinator' ? '📋 Coordinador/a' : '💃 Bailarín/a'}
+                  {user?.role === 'admin' ? '🛡️ Administrador/a' : user?.role === 'coordinator' ? '📋 Coordinador/a' : '💃 Bailarín/a'}
                 </span>
               </div>
             </div>

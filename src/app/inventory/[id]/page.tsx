@@ -235,7 +235,7 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
 
   const canCheckout = costume.status === 'available'
   const canReturn = costume.status === 'borrowed' || costume.status === 'reserved'
-  const canMarkAvailable = user?.role === 'coordinator' && (costume.status === 'washing' || costume.status === 'repair' || costume.status === 'lost')
+  const canMarkAvailable = (user?.role === 'coordinator' || user?.role === 'admin') && (costume.status === 'washing' || costume.status === 'repair' || costume.status === 'lost')
 
   return (
     <div className="max-w-2xl">
@@ -344,7 +344,7 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
           <AlertTriangle className="w-4 h-4" />
           Reportar daño
         </Button>
-        {user?.role === 'coordinator' && (
+        {(user?.role === 'coordinator' || user?.role === 'admin') && (
           <>
             <Button variant="outline" onClick={() => setActiveAction('washing')}>
               <Droplets className="w-4 h-4" />

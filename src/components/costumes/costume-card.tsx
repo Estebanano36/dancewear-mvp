@@ -90,7 +90,7 @@ export function CostumeCard({ costume, onQRClick, onDelete }: CostumeCardProps) 
           >
             <QrCode className="w-4 h-4 text-gray-500" />
           </Button>
-          {user?.role === 'coordinator' && (
+          {(user?.role === 'coordinator' || user?.role === 'admin') && (
             <Button
               type="button"
               variant="ghost"

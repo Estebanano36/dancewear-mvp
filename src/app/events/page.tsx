@@ -137,7 +137,7 @@ export default function EventsPage() {
                 <Eye className="w-3.5 h-3.5" />Ver detalle
               </Button>
             </Link>
-            {user?.role === 'coordinator' && (
+            {(user?.role === 'coordinator' || user?.role === 'admin') && (
               <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(event.id)}
                 className="text-gray-400 hover:text-red-500 hover:bg-red-50">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -156,7 +156,7 @@ export default function EventsPage() {
           <h1 className="text-xl font-bold text-gray-900">Eventos</h1>
           <p className="text-sm text-gray-500 mt-0.5">{events.length} eventos en total</p>
         </div>
-        {user?.role === 'coordinator' && (
+        {(user?.role === 'coordinator' || user?.role === 'admin') && (
           <Button onClick={() => setShowCreate(true)} size="sm">
             <Plus className="w-4 h-4" />Nuevo
           </Button>
@@ -177,7 +177,7 @@ export default function EventsPage() {
         <div className="text-center py-16 text-gray-400">
           <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-200" />
           <p className="font-medium">Sin eventos</p>
-          {user?.role === 'coordinator' && (
+          {(user?.role === 'coordinator' || user?.role === 'admin') && (
             <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowCreate(true)}>
               Crear primer evento
             </Button>

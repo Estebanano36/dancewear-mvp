@@ -68,7 +68,7 @@ function InventoryContent() {
             {loading ? 'Cargando...' : `${costumes.length} vestuarios`}
           </p>
         </div>
-        {user?.role === 'coordinator' && (
+        {(user?.role === 'coordinator' || user?.role === 'admin') && (
           <Button onClick={() => setShowCreate(true)} size="sm">
             <Plus className="w-4 h-4" />
             Nuevo
@@ -226,7 +226,7 @@ function InventoryContent() {
                           <Link href={`/inventory/${costume.id}`}>
                             <Button variant="ghost" size="sm" className="text-xs">Ver</Button>
                           </Link>
-                          {user?.role === 'coordinator' && (
+                          {(user?.role === 'coordinator' || user?.role === 'admin') && (
                             <Button
                               type="button"
                               variant="ghost"

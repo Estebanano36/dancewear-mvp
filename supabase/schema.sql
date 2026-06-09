@@ -11,11 +11,11 @@ create type costume_status as enum (
   'available', 'borrowed', 'reserved', 'washing', 'repair', 'lost'
 );
 
-create type user_role as enum ('coordinator', 'dancer');
+create type user_role as enum ('admin', 'coordinator', 'dancer');
 
 create type movement_action as enum (
   'checkout', 'return', 'send_wash', 'send_repair',
-  'mark_lost', 'damage_report', 'status_change'
+  'mark_lost', 'damage_report', 'status_change', 'assign'
 );
 
 create type damage_severity as enum ('low', 'medium', 'high');
@@ -53,6 +53,7 @@ create index idx_events_coordinator on public.events(coordinator_id);
 create table public.costumes (
   id                  uuid primary key default uuid_generate_v4(),
   code                text not null unique,
+  qr_token            text unique,
   name                text not null,
   category            text not null,
   size                text not null,
@@ -178,17 +179,17 @@ create policy "Costumes viewable by authenticated" on public.costumes
   for select using (auth.role() = 'authenticated');
 
 -- Costumes: coordinadores pueden insertar/actualizar/borrar
-create policy "Coordinators can insert costumes" on public.costumes
+create policy "Coordinators (and admins) can insert costumes" on public.costumes
   for insert with check (
-    exists (select 1 from public.users where id = auth.uid() and role = 'coordinator')
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
   );
 
 create policy "Costumes updatable by authenticated" on public.costumes
   for update using (auth.role() = 'authenticated');
 
-create policy "Coordinators can delete costumes" on public.costumes
+create policy "Coordinators (and admins) can delete costumes" on public.costumes
   for delete using (
-    exists (select 1 from public.users where id = auth.uid() and role = 'coordinator')
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
   );
 
 -- Movements: todos pueden leer y crear
@@ -203,18 +204,18 @@ create policy "Events viewable by authenticated" on public.events
   for select using (auth.role() = 'authenticated');
 
 -- Events: coordinadores pueden crear/editar/borrar
-create policy "Coordinators manage events" on public.events
+create policy "Coordinators (and admins) manage events" on public.events
   for all using (
-    exists (select 1 from public.users where id = auth.uid() and role = 'coordinator')
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
   );
 
 -- Event costumes: todos pueden leer y coordinadores gestionar
 create policy "Event costumes viewable" on public.event_costumes
   for select using (auth.role() = 'authenticated');
 
-create policy "Coordinators manage event costumes" on public.event_costumes
+create policy "Coordinators (and admins) manage event costumes" on public.event_costumes
   for all using (
-    exists (select 1 from public.users where id = auth.uid() and role = 'coordinator')
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
   );
 
 -- Damage reports: todos pueden leer y crear, coordinadores pueden actualizar
@@ -224,9 +225,9 @@ create policy "Damage reports viewable" on public.damage_reports
 create policy "Damage reports creatable" on public.damage_reports
   for insert with check (auth.role() = 'authenticated');
 
-create policy "Coordinators can update damage reports" on public.damage_reports
+create policy "Coordinators (and admins) can update damage reports" on public.damage_reports
   for update using (
-    exists (select 1 from public.users where id = auth.uid() and role = 'coordinator')
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
   );
 
 -- ── 12. STORAGE BUCKET ──────────────────────────────────────

@@ -35,6 +35,18 @@ export async function DELETE(
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
+  // Verify role (only coordinators and admins can delete)
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 })
+  if (!userProfile || !['coordinator', 'admin'].includes(userProfile.role)) {
+    return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 })
+  }
+
   const adminSupabase = createSupabaseClient(supabaseUrl, serviceRoleKey || supabaseKey, {
     auth: {
       persistSession: false,

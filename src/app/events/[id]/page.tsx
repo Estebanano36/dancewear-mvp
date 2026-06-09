@@ -264,7 +264,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
         <div className="p-5 border-b border-gray-50 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Vestuarios asignados</h2>
-          {user?.role === 'coordinator' && !isPast && (
+          {(user?.role === 'coordinator' || user?.role === 'admin') && !isPast && (
             <Button size="sm" onClick={() => setShowAssign(true)}>
               <Plus className="w-3.5 h-3.5" />Asignar
             </Button>
@@ -275,7 +275,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <div className="p-8 text-center">
             <Shirt className="w-10 h-10 mx-auto mb-2 text-gray-200" />
             <p className="text-sm text-gray-400">Sin vestuarios asignados</p>
-            {user?.role === 'coordinator' && !isPast && (
+            {(user?.role === 'coordinator' || user?.role === 'admin') && !isPast && (
               <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowAssign(true)}>
                 Asignar primer vestuario
               </Button>
@@ -311,7 +311,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <Link href={`/inventory/${(ec.costume as { id: string })?.id}`}>
                     <Button variant="ghost" size="sm" className="text-xs">Ver</Button>
                   </Link>
-                  {user?.role === 'coordinator' && !isPast && (
+                  {(user?.role === 'coordinator' || user?.role === 'admin') && !isPast && (
                     <Button
                       variant="ghost"
                       size="icon-sm"
