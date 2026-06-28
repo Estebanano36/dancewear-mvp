@@ -3,32 +3,54 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, Suspense } from 'react'
-import { Search, FolderPlus, Plus, Upload } from 'lucide-react'
+import { Search, FolderPlus, Plus, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { useUser } from '@/hooks/use-user'
 import { listService } from '@/lib/services/list.service'
 import { costumeService } from '@/lib/services/costume.service'
-import type { List as InventoryList, Costume } from '@/types'
+import type { List as InventoryList, Costume, CostumeStatus } from '@/types'
 import { formatDate } from '@/utils'
 import Link from 'next/link'
 import CreateListModal from '@/components/lists/create-list-modal'
 import { CreateCostumeModal } from '@/components/costumes/create-costume-modal'
 import { BulkUploadModal } from '@/components/costumes/bulk-upload-modal'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { StatusBadge } from '@/components/ui/status-badge'
 
-
+const STATUS_LABELS: Record<string, string> = {
+  available: 'Disponibles',
+  borrowed: 'Prestados',
+  washing: 'En lavado',
+  repair: 'En arreglo',
+  lost: 'Perdidos',
+  reserved: 'Reservados',
+}
 
 function InventoryContent() {
   const { user } = useUser()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
   const [lists, setLists] = useState<InventoryList[]>([])
   const [costumes, setCostumes] = useState<Costume[]>([])
   const [activeTab, setActiveTab] = useState<'lists' | 'costumes'>('lists')
+  const [statusFilter, setStatusFilter] = useState<CostumeStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCreateList, setShowCreateList] = useState(false)
   const [showCreateCostume, setShowCreateCostume] = useState(false)
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   const [searchInput, setSearchInput] = useState('')
+
+  // On mount: if ?status= is present, jump to costumes tab and set filter
+  useEffect(() => {
+    const s = searchParams.get('status') as CostumeStatus | null
+    if (s && Object.keys(STATUS_LABELS).includes(s)) {
+      setActiveTab('costumes')
+      setStatusFilter(s)
+    }
+  }, [searchParams])
 
   const loadData = async () => {
     try {
@@ -58,17 +80,26 @@ function InventoryContent() {
     setSearchInput(value)
   }
 
+  const clearStatusFilter = () => {
+    setStatusFilter(null)
+    // Remove ?status param from URL without navigation
+    router.replace('/inventory', { scroll: false })
+  }
+
   const filteredLists = lists.filter((list) =>
     list.name.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
     (list.description || '').toLowerCase().includes(searchInput.trim().toLowerCase())
   )
 
-  const filteredCostumes = costumes.filter((c) =>
-    c.name.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
-    c.code.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
-    c.category.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
-    (c.location || '').toLowerCase().includes(searchInput.trim().toLowerCase())
-  )
+  const filteredCostumes = costumes.filter((c) => {
+    const matchesSearch =
+      c.name.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
+      c.code.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
+      c.category.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
+      (c.location || '').toLowerCase().includes(searchInput.trim().toLowerCase())
+    const matchesStatus = statusFilter ? c.status === statusFilter : true
+    return matchesSearch && matchesStatus
+  })
 
   return (
     <div>
@@ -134,7 +165,20 @@ function InventoryContent() {
             onChange={(e) => handleSearch(e.target.value)}
             className="flex-1"
           />
-          <div className="text-sm text-gray-500">
+          {/* Active status filter pill */}
+          {activeTab === 'costumes' && statusFilter && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-sm font-medium flex-shrink-0">
+              <StatusBadge status={statusFilter} />
+              <button
+                onClick={clearStatusFilter}
+                className="ml-1 text-violet-400 hover:text-violet-700 transition-colors"
+                title="Quitar filtro"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="text-sm text-gray-500 flex-shrink-0">
             {activeTab === 'lists' 
               ? `${filteredLists.length} ${filteredLists.length === 1 ? 'lista' : 'listas'}`
               : `${filteredCostumes.length} ${filteredCostumes.length === 1 ? 'prenda' : 'prendas'}`
