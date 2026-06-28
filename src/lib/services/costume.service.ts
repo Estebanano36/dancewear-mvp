@@ -9,26 +9,44 @@ export const costumeService = {
     search?: string
   }): Promise<Costume[]> {
     const supabase = createClient()
-    let query = supabase
-      .from('costumes')
-      .select(`
-        *,
-        current_holder:users!costumes_current_holder_id_fkey(id, full_name, email),
-        current_event:events!costumes_current_event_id_fkey(id, name, date)
-      `)
-      .order('created_at', { ascending: false })
 
-    if (filters?.status) query = query.eq('status', filters.status)
-    if (filters?.category) query = query.eq('category', filters.category)
-    if (filters?.search) {
-      query = query.or(
-        `name.ilike.%${filters.search}%,code.ilike.%${filters.search}%,category.ilike.%${filters.search}%`
-      )
+    // Supabase REST default limit is 1000 rows. We fetch in pages to get all costumes.
+    const PAGE_SIZE = 1000
+    let page = 0
+    const allData: Costume[] = []
+
+    while (true) {
+      let query = supabase
+        .from('costumes')
+        .select(`
+          *,
+          current_holder:users!costumes_current_holder_id_fkey(id, full_name, email),
+          current_event:events!costumes_current_event_id_fkey(id, name, date)
+        `)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+      if (filters?.status) query = query.eq('status', filters.status)
+      if (filters?.category) query = query.eq('category', filters.category)
+      if (filters?.search) {
+        query = query.or(
+          `name.ilike.%${filters.search}%,code.ilike.%${filters.search}%,category.ilike.%${filters.search}%`
+        )
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+
+      const rows = data || []
+      allData.push(...(rows as Costume[]))
+
+      // If fewer rows than page size returned, we've reached the last page
+      if (rows.length < PAGE_SIZE) break
+      page++
     }
 
-    const { data, error } = await query
-    if (error) throw error
-    return data || []
+    return allData
   },
 
   async getById(id: string): Promise<Costume | null> {
@@ -86,6 +104,50 @@ export const costumeService = {
 
     if (error) throw error
     return data
+  },
+
+  async createMany(costumes: Omit<Costume, 'id' | 'created_at' | 'updated_at' | 'code' | 'qr_token'>[]): Promise<Costume[]> {
+    const supabase = createClient()
+    const insertPayloads = costumes.map((c, index) => {
+      const baseCode = generateCostumeCode()
+      const code = `${baseCode}-${index + 1}`
+      const qrToken = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}-${index}`
+      return {
+        ...c,
+        code,
+        status: c.status || 'available',
+        qr_token: qrToken,
+      }
+    })
+
+    let { data, error } = await supabase
+      .from('costumes')
+      .insert(insertPayloads)
+      .select()
+
+    if (error) {
+      const message = error.message || ''
+      const isQrTokenMissing = message.includes('qr_token') || message.includes("Could not find the 'qr_token' column")
+
+      if (isQrTokenMissing) {
+        const cleanedPayloads = insertPayloads.map(payload => {
+          const { qr_token, ...rest } = payload
+          return rest
+        })
+        const retryResult = await supabase
+          .from('costumes')
+          .insert(cleanedPayloads)
+          .select()
+
+        data = retryResult.data
+        error = retryResult.error
+      }
+    }
+
+    if (error) throw error
+    return data || []
   },
 
   async update(id: string, updates: Partial<Costume>): Promise<Costume> {
@@ -252,6 +314,71 @@ export const costumeService = {
       .getPublicUrl(data.path)
 
     return urlData.publicUrl
+  },
+
+  async addPhoto(costumeId: string, file: File): Promise<Costume> {
+    const supabase = createClient()
+
+    // 1. Upload file to storage
+    const photoUrl = await this.uploadPhoto(file, costumeId)
+
+    // 2. Get current photos array
+    const { data: current, error: fetchError } = await supabase
+      .from('costumes')
+      .select('photos')
+      .eq('id', costumeId)
+      .single()
+
+    if (fetchError) throw fetchError
+
+    const existingPhotos: string[] = current?.photos || []
+    const newPhotos = [...existingPhotos, photoUrl]
+
+    // 3. Update costume record
+    const { data, error } = await supabase
+      .from('costumes')
+      .update({ photos: newPhotos, updated_at: new Date().toISOString() })
+      .eq('id', costumeId)
+      .select(`
+        *,
+        current_holder:users!costumes_current_holder_id_fkey(id, full_name, email),
+        current_event:events!costumes_current_event_id_fkey(id, name, date)
+      `)
+      .single()
+
+    if (error) throw error
+    return data
+  },
+
+  async removePhoto(costumeId: string, photoUrl: string): Promise<Costume> {
+    const supabase = createClient()
+
+    // 1. Get current photos array
+    const { data: current, error: fetchError } = await supabase
+      .from('costumes')
+      .select('photos')
+      .eq('id', costumeId)
+      .single()
+
+    if (fetchError) throw fetchError
+
+    const existingPhotos: string[] = current?.photos || []
+    const newPhotos = existingPhotos.filter((p) => p !== photoUrl)
+
+    // 2. Update costume record
+    const { data, error } = await supabase
+      .from('costumes')
+      .update({ photos: newPhotos, updated_at: new Date().toISOString() })
+      .eq('id', costumeId)
+      .select(`
+        *,
+        current_holder:users!costumes_current_holder_id_fkey(id, full_name, email),
+        current_event:events!costumes_current_event_id_fkey(id, name, date)
+      `)
+      .single()
+
+    if (error) throw error
+    return data
   },
 
   async getDashboardStats() {

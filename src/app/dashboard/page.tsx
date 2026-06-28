@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Shirt, CheckCircle, ArrowUpRight, Sparkles,
@@ -10,7 +10,6 @@ import {
 import { StatCard } from '@/components/dashboard/stat-card'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
-import { costumeService } from '@/lib/services/costume.service'
 import { createClient } from '@/lib/supabase/client'
 import { formatDateTime } from '@/utils'
 import type { CostumeMovement } from '@/types'
@@ -31,46 +30,66 @@ export default function DashboardPage() {
   const [recentMovements, setRecentMovements] = useState<CostumeMovement[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const supabase = createClient()
 
-      const [statsData, movementsData] = await Promise.all([
-        costumeService.getDashboardStats(),
-        supabase
-          .from('costume_movements')
-          .select(`
-            *,
-            costume:costumes(id, name, code),
-            user:users!costume_movements_user_id_fkey(full_name)
-          `)
-          .order('created_at', { ascending: false })
-          .limit(8)
-          .then(({ data }) => data || []),
-      ])
+      // Fetch stats from server-side API to always get fresh data, bypassing any browser cache
+      const statsRes = await fetch('/api/dashboard/stats', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      })
+      if (!statsRes.ok) throw new Error('Error al obtener estadísticas')
+      const statsData = await statsRes.json()
+
+      const movementsData = await supabase
+        .from('costume_movements')
+        .select(`
+          *,
+          costume:costumes(id, name, code),
+          user:users!costume_movements_user_id_fkey(full_name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(8)
+        .then(({ data }) => data || [])
 
       setStats(statsData)
       setRecentMovements(movementsData)
     } catch (err) {
       console.error(err)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
+    // Initial load
     fetchData()
 
-    // Realtime subscription
+    // Refresh silently whenever the user comes back to this tab
+    const handleFocus = () => fetchData(true)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchData(true)
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    // Realtime subscription (works if Supabase Realtime is enabled for costumes table)
     const supabase = createClient()
     const channel = supabase
-      .channel('dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'costumes' }, fetchData)
+      .channel('dashboard-costumes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'costumes' }, () => fetchData(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'costume_movements' }, () => fetchData(true))
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [])
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      supabase.removeChannel(channel)
+    }
+  }, [fetchData])
 
   const actionLabels: Record<string, string> = {
     checkout: 'Retiró',
@@ -89,7 +108,7 @@ export default function DashboardPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-violet-600">Dashboard</p>
           <h1 className="text-2xl md:text-3xl font-black text-gray-900">Resumen del día</h1>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} className="rounded-2xl border-violet-200 bg-white/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-violet-50 hover:shadow-md">
+        <Button variant="outline" size="sm" onClick={() => fetchData()} className="rounded-2xl border-violet-200 bg-white/80 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:bg-violet-50 hover:shadow-md">
           <RefreshCw className="w-3.5 h-3.5" />
           Actualizar
         </Button>

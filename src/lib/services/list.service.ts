@@ -145,6 +145,12 @@ export const listService = {
     return true
   },
 
+  async delete(id: string): Promise<void> {
+    await apiFetch<{ success: boolean }>(`/api/lists/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
   async getAll(): Promise<List[]> {
     const supabase = await createSupabaseClient()
     const { data, error } = await supabase.from('lists').select('*').order('created_at', { ascending: false })

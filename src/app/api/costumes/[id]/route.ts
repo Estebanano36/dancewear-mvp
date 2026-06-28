@@ -86,6 +86,8 @@ export async function DELETE(
 
   revalidatePath('/inventory')
   revalidatePath('/lists')
+  revalidatePath('/dashboard')
+  revalidatePath('/')
 
   return NextResponse.json({ success: true }, { status: 200 })
 }

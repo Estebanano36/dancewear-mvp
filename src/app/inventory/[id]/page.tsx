@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, AlertTriangle, RotateCcw,
   Droplets, Wrench, Package, User, Calendar, MapPin,
-  Clock, Camera, CheckCircle, Trash2, Pencil, X, Check
+  Clock, Camera, CheckCircle, Trash2, Pencil, X, Check,
+  ImagePlus, ChevronLeft, ChevronRight, FolderPlus
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -18,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AddToListModal } from '@/components/lists/add-to-list-modal'
 
 interface ActionModalProps {
   costume: Costume
@@ -192,8 +194,12 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
   const [editingDesc, setEditingDesc] = useState(false)
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoIndex, setPhotoIndex] = useState(0)
+  const [showAddToList, setShowAddToList] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const descInputRef = useRef<HTMLInputElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = async () => {
     try {
@@ -263,6 +269,34 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  const handleAddPhoto = async (file: File) => {
+    if (!costume) return
+    try {
+      setUploadingPhoto(true)
+      const updated = await costumeService.addPhoto(costume.id, file)
+      setCostume(updated)
+      setPhotoIndex((updated.photos?.length || 1) - 1)
+      toast.success('Foto añadida correctamente')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al subir la foto')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  const handleRemovePhoto = async (photoUrl: string) => {
+    if (!costume) return
+    if (!window.confirm('¿Eliminar esta foto?')) return
+    try {
+      const updated = await costumeService.removePhoto(costume.id, photoUrl)
+      setCostume(updated)
+      setPhotoIndex(0)
+      toast.success('Foto eliminada')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al eliminar la foto')
+    }
+  }
+
   if (loading) {
     return (
       <div>
@@ -320,41 +354,107 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
           )}
-          {/* Editable description */}
-          {editingDesc ? (
-            <div className="flex items-center gap-1 mt-0.5">
-              <input
-                ref={descInputRef}
-                className="text-sm text-gray-400 border-b border-violet-300 outline-none bg-transparent w-full"
-                value={editDesc}
-                placeholder="Sin descripción"
-                onChange={(e) => setEditDesc(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit('description'); if (e.key === 'Escape') setEditingDesc(false) }}
-              />
-              <button onClick={() => handleSaveEdit('description')} className="text-green-600 hover:text-green-700 p-1 flex-shrink-0"><Check className="w-4 h-4" /></button>
-              <button onClick={() => setEditingDesc(false)} className="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0"><X className="w-4 h-4" /></button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 mt-0.5 group">
-              <p className="text-sm text-gray-400 truncate">{costume.description || costume.code}</p>
-              {(user?.role === 'coordinator' || user?.role === 'admin') && (
-                <button onClick={startEditDesc} className="text-gray-300 hover:text-violet-500 p-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil className="w-3 h-3" /></button>
-              )}
-            </div>
-          )}
+          <p className="text-sm text-gray-400 font-mono mt-0.5">{costume.code}</p>
         </div>
         <StatusBadge status={costume.status} />
       </div>
 
-      {/* Photo */}
-      <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl h-52 mb-4 overflow-hidden relative">
-        {costume.photos?.[0] ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={costume.photos[0]} alt={costume.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full">
-            <span className="text-6xl">👗</span>
-            <p className="text-xs text-violet-300 mt-2">Sin foto</p>
+      {/* Photos Section */}
+      <div className="mb-4">
+        {/* Main photo display */}
+        <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl h-56 overflow-hidden relative group">
+          {costume.photos && costume.photos.length > 0 ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={costume.photos[photoIndex]}
+                alt={`${costume.name} - foto ${photoIndex + 1}`}
+                className="w-full h-full object-cover"
+              />
+              {/* Navigation arrows if multiple photos */}
+              {costume.photos.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setPhotoIndex((i) => (i - 1 + costume.photos!.length) % costume.photos!.length)}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setPhotoIndex((i) => (i + 1) % costume.photos!.length)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  {/* Photo counter */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
+                    {photoIndex + 1} / {costume.photos.length}
+                  </div>
+                </>
+              )}
+              {/* Delete current photo button */}
+              {(user?.role === 'coordinator' || user?.role === 'admin') && (
+                <button
+                  onClick={() => handleRemovePhoto(costume.photos![photoIndex])}
+                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                  title="Eliminar esta foto"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full">
+              <span className="text-6xl">👗</span>
+              <p className="text-xs text-violet-300 mt-2">Sin foto</p>
+            </div>
+          )}
+
+          {/* Upload overlay button - always visible for coordinators/admins */}
+          {(user?.role === 'coordinator' || user?.role === 'admin') && (
+            <>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleAddPhoto(file)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white text-violet-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm transition-all hover:shadow-md disabled:opacity-60"
+              >
+                {uploadingPhoto ? (
+                  <span className="animate-spin rounded-full border-2 border-violet-400 border-t-transparent w-3.5 h-3.5" />
+                ) : (
+                  <ImagePlus className="w-3.5 h-3.5" />
+                )}
+                {uploadingPhoto ? 'Subiendo...' : costume.photos && costume.photos.length > 0 ? 'Añadir foto' : 'Subir foto'}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Photo thumbnails strip */}
+        {costume.photos && costume.photos.length > 1 && (
+          <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+            {costume.photos.map((photo, idx) => (
+              <button
+                key={idx}
+                onClick={() => setPhotoIndex(idx)}
+                className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                  idx === photoIndex ? 'border-violet-500 shadow-sm' : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -401,12 +501,43 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
         )}
       </div>
 
-      {costume.description && (
-        <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
-          <p className="text-xs text-gray-400 mb-1">Descripción</p>
-          <p className="text-sm text-gray-700">{costume.description}</p>
+      {/* Description card (always visible, allows multi-line edit for coordinators/admins) */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-gray-400">Descripción</p>
+          {(user?.role === 'coordinator' || user?.role === 'admin') && !editingDesc && (
+            <button
+              onClick={startEditDesc}
+              className="text-gray-400 hover:text-violet-600 transition-colors p-1"
+              title="Editar descripción"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-      )}
+        {editingDesc ? (
+          <div className="space-y-2">
+            <Textarea
+              className="text-sm text-gray-700 w-full"
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              rows={6}
+            />
+            <div className="flex justify-end gap-1.5">
+              <Button size="sm" variant="outline" onClick={() => setEditingDesc(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={() => handleSaveEdit('description')}>
+                Guardar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+            {costume.description || 'Sin descripción'}
+          </p>
+        )}
+      </div>
 
       {/* Actions */}
       <div className="grid grid-cols-2 gap-2 mb-6">
@@ -434,6 +565,10 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
         </Button>
         {(user?.role === 'coordinator' || user?.role === 'admin') && (
           <>
+            <Button onClick={() => setShowAddToList(true)} className="col-span-2 bg-violet-600 hover:bg-violet-700">
+              <FolderPlus className="w-4 h-4" />
+              Añadir a lista
+            </Button>
             <Button variant="outline" onClick={() => setActiveAction('washing')}>
               <Droplets className="w-4 h-4" />
               Enviar lavado
@@ -515,6 +650,14 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
           userId={user.id}
           onSuccess={fetchData}
           onClose={() => setActiveAction(null)}
+        />
+      )}
+
+      {showAddToList && (
+        <AddToListModal
+          costumeId={costume.id}
+          costumeName={costume.name}
+          onClose={() => { setShowAddToList(false); fetchData() }}
         />
       )}
     </div>
