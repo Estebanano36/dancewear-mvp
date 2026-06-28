@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { costumeService } from '@/lib/services/costume.service'
 import { listService } from '@/lib/services/list.service'
-import { COSTUME_CATEGORIES, COSTUME_SIZES, List } from '@/types'
+import { COSTUME_CATEGORIES, COSTUME_SIZES, List, Costume } from '@/types'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
@@ -305,16 +305,16 @@ export function BulkUploadModal({ onSuccess, onClose }: Props) {
       setLoading(true)
 
       // Unroll quantities to separate costume objects
-      const costumesToInsert: Omit<any, 'id' | 'created_at' | 'updated_at' | 'code' | 'qr_token'>[] = []
+      const costumesToInsert: Omit<Costume, 'id' | 'created_at' | 'updated_at' | 'code' | 'qr_token'>[] = []
       validItems.forEach(item => {
         for (let i = 0; i < item.quantity; i++) {
           costumesToInsert.push({
             name: item.name,
             category: item.category,
             size: item.size,
-            description: item.description || null,
-            location: item.location || null,
-            notes: item.notes || null,
+            description: item.description || undefined,
+            location: item.location || undefined,
+            notes: item.notes || undefined,
             status: 'available',
             photos: [],
           })
