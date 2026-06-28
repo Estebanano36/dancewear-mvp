@@ -18,7 +18,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       getAll() {
         return cookieStore.getAll()
       },
-      setAll(_cookies) {},
+      setAll() {},
     },
   })
 
@@ -33,7 +33,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   try {
     const svg = await QRCode.toString(qrUrl, { type: 'svg', width: 300 })
     return new NextResponse(svg, { status: 200, headers: { 'Content-Type': 'image/svg+xml' } })
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Error generando QR' }, { status: 500 })
   }
 }

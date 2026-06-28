@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, Calendar, MapPin, Shirt, User, X, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -152,7 +152,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true)
   const [showAssign, setShowAssign] = useState(false)
 
-  const fetchEvent = async () => {
+  const fetchEvent = useCallback(async () => {
     try {
       setLoading(true)
       const data = await eventService.getById(id)
@@ -162,9 +162,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
-  useEffect(() => { fetchEvent() }, [id])
+  useEffect(() => { fetchEvent() }, [fetchEvent])
 
   const handleRemoveCostume = async (eventCostumeId: string, costumeId: string) => {
     if (!confirm('¿Quitar este vestuario del evento?')) return

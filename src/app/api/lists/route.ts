@@ -76,8 +76,6 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(data)
   } catch (caught) {
-    // Log for server-side debugging and return JSON error
-    // eslint-disable-next-line no-console
     console.error('Error POST /api/lists', caught)
     let message = ''
     if (caught instanceof Error) message = caught.message
@@ -135,7 +133,6 @@ export async function PATCH(request: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
   } catch (caught) {
-    // eslint-disable-next-line no-console
     console.error('Error PATCH /api/lists', caught)
     let message = ''
     if (caught instanceof Error) message = caught.message

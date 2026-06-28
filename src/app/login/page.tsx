@@ -40,6 +40,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[28px] bg-white flex items-center justify-center mx-auto mb-4 shadow-[0_18px_36px_-18px_rgba(124,58,237,0.45)] overflow-hidden p-4 ring-2 ring-violet-100 border border-violet-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain rounded-2xl" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">ArabelaEspectaculos</h1>

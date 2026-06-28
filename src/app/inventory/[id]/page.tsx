@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use, useRef } from 'react'
+import { useState, useEffect, use, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, AlertTriangle, RotateCcw,
@@ -201,7 +201,7 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
   const descInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       const [costumeData, historyData] = await Promise.all([
@@ -215,9 +215,9 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
-  useEffect(() => { fetchData() }, [id])
+  useEffect(() => { fetchData() }, [fetchData])
 
   const handleSaveEdit = async (field: 'name' | 'description') => {
     if (!costume) return
@@ -603,7 +603,7 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
             <div className="relative">
               <div className="absolute left-4 top-2 bottom-2 w-px bg-gray-100" />
               <div className="space-y-4">
-                {history.map((movement, i) => (
+                {history.map((movement, _i) => (
                   <div key={movement.id} className="flex items-start gap-4 pl-10 relative">
                     <div className={`absolute left-2 w-4 h-4 rounded-full flex items-center justify-center text-white flex-shrink-0 mt-0.5 ${
                       movement.action === 'damage_report' || movement.action === 'mark_lost'

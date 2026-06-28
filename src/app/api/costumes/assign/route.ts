@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() { return cookieStore.getAll() },
-      setAll(_c) {},
+      setAll() {},
     },
   })
 

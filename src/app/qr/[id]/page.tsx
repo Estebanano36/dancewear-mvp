@@ -233,6 +233,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
       <div className="min-h-screen bg-gray-50">
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center overflow-hidden p-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain" />
           </div>
           <span className="font-bold text-gray-900">ArabelaEspectaculos</span>
@@ -431,6 +432,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center overflow-hidden p-1">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain" />
         </div>
         <span className="font-bold text-gray-900">ArabelaEspectaculos</span>

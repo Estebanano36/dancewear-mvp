@@ -193,7 +193,7 @@ export const costumeService = {
       .select('id, stock')
       .eq('costume_id', costumeId)
 
-    let finalStatus = status
+    const finalStatus = status
 
     if (listItems && listItems.length > 0) {
       for (const item of listItems) {
