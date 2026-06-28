@@ -1,7 +1,7 @@
 import type { List, ListItem, Costume } from '@/types'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 
 function assertSupabaseEnv() {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -16,7 +16,7 @@ async function createSupabaseClient() {
   if (typeof window === 'undefined') {
     const { cookies } = await import('next/headers')
     const { createServerClient } = await import('@supabase/ssr')
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
 
     return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
       cookies: {
@@ -113,6 +113,13 @@ export const listService = {
     return apiFetch<List>('/api/lists', {
       method: 'POST',
       body: JSON.stringify(payload),
+    })
+  },
+
+  async update(id: string, updates: { name?: string; description?: string }): Promise<List> {
+    return apiFetch<List>('/api/lists', {
+      method: 'PATCH',
+      body: JSON.stringify({ id, ...updates }),
     })
   },
 

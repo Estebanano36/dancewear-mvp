@@ -50,12 +50,8 @@ export function QRModal({ list, onClose }: QRModalProps) {
         </button>
 
         <div className="text-center mb-5">
-          <h3 className="font-bold text-gray-900 text-lg">{list ? list.name : costume?.name}</h3>
-          {list ? (
-            <p className="text-sm text-gray-400">Lista · {list.id}</p>
-          ) : (
-            <p className="text-sm text-gray-400">{costume?.code}</p>
-          )}
+          <h3 className="font-bold text-gray-900 text-lg">{list.name}</h3>
+          <p className="text-sm text-gray-400">Lista · {list.id}</p>
         </div>
 
         <div ref={qrRef} className="flex justify-center p-4 bg-gray-50 rounded-xl mb-4">

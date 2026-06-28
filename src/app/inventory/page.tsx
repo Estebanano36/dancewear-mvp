@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { Search } from 'lucide-react'
-import { FolderPlus } from 'lucide-react'
+import { Search, FolderPlus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -12,6 +11,7 @@ import type { List as InventoryList } from '@/types'
 import { formatDate } from '@/utils'
 import Link from 'next/link'
 import CreateListModal from '@/components/lists/create-list-modal'
+import { CreateCostumeModal } from '@/components/costumes/create-costume-modal'
 
 
 function InventoryContent() {
@@ -19,6 +19,7 @@ function InventoryContent() {
   const [lists, setLists] = useState<InventoryList[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateList, setShowCreateList] = useState(false)
+  const [showCreateCostume, setShowCreateCostume] = useState(false)
   const [searchInput, setSearchInput] = useState('')
 
   useEffect(() => {
@@ -57,10 +58,16 @@ function InventoryContent() {
         </div>
         <div className="flex gap-2">
           {(user?.role === 'coordinator' || user?.role === 'admin') && (
-            <Button onClick={() => setShowCreateList(true)} size="sm" variant="outline">
-              <FolderPlus className="w-4 h-4" />
-              Nueva lista
-            </Button>
+            <>
+              <Button onClick={() => setShowCreateCostume(true)} size="sm">
+                <Plus className="w-4 h-4" />
+                Nuevo vestuario
+              </Button>
+              <Button onClick={() => setShowCreateList(true)} size="sm" variant="outline">
+                <FolderPlus className="w-4 h-4" />
+                Nueva lista
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -108,6 +115,24 @@ function InventoryContent() {
         <CreateListModal
           onClose={() => setShowCreateList(false)}
           onCreated={(id) => { setShowCreateList(false); window.location.href = `/lists/${id}` }}
+        />
+      )}
+
+      {showCreateCostume && (
+        <CreateCostumeModal
+          onClose={() => setShowCreateCostume(false)}
+          onSuccess={async () => {
+            setShowCreateCostume(false)
+            try {
+              setLoading(true)
+              const data = await listService.getAll()
+              setLists(data)
+            } catch {
+              toast.error('Error al cargar las listas')
+            } finally {
+              setLoading(false)
+            }
+          }}
         />
       )}
     </div>

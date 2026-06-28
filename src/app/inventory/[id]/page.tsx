@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, AlertTriangle, RotateCcw,
   Droplets, Wrench, Package, User, Calendar, MapPin,
-  Clock, Camera, CheckCircle
+  Clock, Camera, CheckCircle, Trash2, Pencil, X, Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -180,14 +180,20 @@ const movementLabels: Record<string, string> = {
   status_change: 'Estado cambiado por',
 }
 
-export default function CostumeDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default function CostumeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const { user } = useUser()
   const [costume, setCostume] = useState<Costume | null>(null)
   const [history, setHistory] = useState<CostumeMovement[]>([])
   const [loading, setLoading] = useState(true)
   const [activeAction, setActiveAction] = useState<ActionModalProps['action'] | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const descInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = async () => {
     try {
@@ -206,6 +212,56 @@ export default function CostumeDetailPage({ params }: { params: { id: string } }
   }
 
   useEffect(() => { fetchData() }, [id])
+
+  const handleSaveEdit = async (field: 'name' | 'description') => {
+    if (!costume) return
+    const value = field === 'name' ? editName.trim() : editDesc.trim()
+    if (field === 'name' && !value) {
+      toast.error('El nombre no puede estar vacío')
+      return
+    }
+    try {
+      const updated = await costumeService.update(costume.id, { [field]: value })
+      setCostume(updated)
+      if (field === 'name') setEditingName(false)
+      else setEditingDesc(false)
+      toast.success('Guardado')
+    } catch {
+      toast.error('Error al guardar')
+    }
+  }
+
+  const startEditName = () => {
+    if (!costume) return
+    setEditName(costume.name)
+    setEditingName(true)
+    setTimeout(() => nameInputRef.current?.focus(), 50)
+  }
+
+  const startEditDesc = () => {
+    if (!costume) return
+    setEditDesc(costume.description || '')
+    setEditingDesc(true)
+    setTimeout(() => descInputRef.current?.focus(), 50)
+  }
+
+  const handleDelete = async () => {
+    if (!costume) return
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este vestuario de forma permanente? Esta acción no se puede deshacer.')) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      await costumeService.delete(costume.id)
+      toast.success('Vestuario eliminado exitosamente')
+      router.push('/inventory')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al eliminar')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -242,9 +298,50 @@ export default function CostumeDetailPage({ params }: { params: { id: string } }
         <Button variant="ghost" size="icon-sm" onClick={() => router.back()}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900 leading-tight">{costume.name}</h1>
-          <p className="text-sm text-gray-400">{costume.code}</p>
+        <div className="flex-1 min-w-0">
+          {/* Editable name */}
+          {editingName ? (
+            <div className="flex items-center gap-1">
+              <input
+                ref={nameInputRef}
+                className="text-xl font-bold text-gray-900 leading-tight border-b-2 border-violet-400 outline-none bg-transparent w-full"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit('name'); if (e.key === 'Escape') setEditingName(false) }}
+              />
+              <button onClick={() => handleSaveEdit('name')} className="text-green-600 hover:text-green-700 p-1 flex-shrink-0"><Check className="w-4 h-4" /></button>
+              <button onClick={() => setEditingName(false)} className="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0"><X className="w-4 h-4" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 group">
+              <h1 className="text-xl font-bold text-gray-900 leading-tight truncate">{costume.name}</h1>
+              {(user?.role === 'coordinator' || user?.role === 'admin') && (
+                <button onClick={startEditName} className="text-gray-300 hover:text-violet-500 p-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil className="w-3.5 h-3.5" /></button>
+              )}
+            </div>
+          )}
+          {/* Editable description */}
+          {editingDesc ? (
+            <div className="flex items-center gap-1 mt-0.5">
+              <input
+                ref={descInputRef}
+                className="text-sm text-gray-400 border-b border-violet-300 outline-none bg-transparent w-full"
+                value={editDesc}
+                placeholder="Sin descripción"
+                onChange={(e) => setEditDesc(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit('description'); if (e.key === 'Escape') setEditingDesc(false) }}
+              />
+              <button onClick={() => handleSaveEdit('description')} className="text-green-600 hover:text-green-700 p-1 flex-shrink-0"><Check className="w-4 h-4" /></button>
+              <button onClick={() => setEditingDesc(false)} className="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0"><X className="w-4 h-4" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 mt-0.5 group">
+              <p className="text-sm text-gray-400 truncate">{costume.description || costume.code}</p>
+              {(user?.role === 'coordinator' || user?.role === 'admin') && (
+                <button onClick={startEditDesc} className="text-gray-300 hover:text-violet-500 p-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil className="w-3 h-3" /></button>
+              )}
+            </div>
+          )}
         </div>
         <StatusBadge status={costume.status} />
       </div>
@@ -348,6 +445,10 @@ export default function CostumeDetailPage({ params }: { params: { id: string } }
             <Button variant="outline" onClick={() => setActiveAction('lost')} className="text-red-600 hover:text-red-700 hover:bg-red-50">
               <AlertTriangle className="w-4 h-4" />
               Marcar perdido
+            </Button>
+            <Button variant="outline" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50 col-span-2">
+              <Trash2 className="w-4 h-4" />
+              Eliminar vestuario
             </Button>
           </>
         )}

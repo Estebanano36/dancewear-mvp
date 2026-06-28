@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use, useCallback } from 'react'
 import {
   CheckCircle, ArrowLeft, Droplets, Wrench,
   AlertTriangle, Package, User, Camera, Loader2
@@ -15,27 +15,27 @@ import { listService } from '@/lib/services/list.service'
 import { eventService } from '@/lib/services/event.service'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/utils'
-import type { Event, List, ListItem } from '@/types'
+import type { Event, List, ListItem, Costume } from '@/types'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-export default function QRScanPage({ params }: { params: { id: string } }) {
-  const { id } = params
-type ActionType = 'checkout' | 'return' | 'washing' | 'repair' | 'damage'
-
-const actions = [
-  { id: 'checkout' as ActionType, label: 'Retirar', icon: ArrowLeft, iconClass: 'rotate-180', bg: 'bg-amber-50', border: 'border-amber-200', color: 'text-amber-700', activeBg: 'bg-amber-500', activeText: 'text-white' },
-  { id: 'return' as ActionType, label: 'Devolver', icon: CheckCircle, iconClass: '', bg: 'bg-emerald-50', border: 'border-emerald-200', color: 'text-emerald-700', activeBg: 'bg-emerald-500', activeText: 'text-white' },
-  { id: 'washing' as ActionType, label: 'Lavado', icon: Droplets, iconClass: '', bg: 'bg-cyan-50', border: 'border-cyan-200', color: 'text-cyan-700', activeBg: 'bg-cyan-500', activeText: 'text-white' },
-  { id: 'repair' as ActionType, label: 'Arreglo', icon: Wrench, iconClass: '', bg: 'bg-orange-50', border: 'border-orange-200', color: 'text-orange-700', activeBg: 'bg-orange-500', activeText: 'text-white' },
-  { id: 'damage' as ActionType, label: 'Daño', icon: AlertTriangle, iconClass: '', bg: 'bg-red-50', border: 'border-red-200', color: 'text-red-700', activeBg: 'bg-red-500', activeText: 'text-white' },
-]
-
 export default function QRScanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+
+  type ActionType = 'checkout' | 'return' | 'washing' | 'repair' | 'damage'
+
+  const actions = [
+    { id: 'checkout' as ActionType, label: 'Retirar', icon: ArrowLeft, iconClass: 'rotate-180', bg: 'bg-amber-50', border: 'border-amber-200', color: 'text-amber-700', activeBg: 'bg-amber-500', activeText: 'text-white' },
+    { id: 'return' as ActionType, label: 'Devolver', icon: CheckCircle, iconClass: '', bg: 'bg-emerald-50', border: 'border-emerald-200', color: 'text-emerald-700', activeBg: 'bg-emerald-500', activeText: 'text-white' },
+    { id: 'washing' as ActionType, label: 'Lavado', icon: Droplets, iconClass: '', bg: 'bg-cyan-50', border: 'border-cyan-200', color: 'text-cyan-700', activeBg: 'bg-cyan-500', activeText: 'text-white' },
+    { id: 'repair' as ActionType, label: 'Arreglo', icon: Wrench, iconClass: '', bg: 'bg-orange-50', border: 'border-orange-200', color: 'text-orange-700', activeBg: 'bg-orange-500', activeText: 'text-white' },
+    { id: 'damage' as ActionType, label: 'Daño', icon: AlertTriangle, iconClass: '', bg: 'bg-red-50', border: 'border-red-200', color: 'text-red-700', activeBg: 'bg-red-500', activeText: 'text-white' },
+  ]
+
   const [list, setList] = useState<List | null>(null)
+  const [scannedCostume, setScannedCostume] = useState<Costume | null>(null)
   const [selectedListItem, setSelectedListItem] = useState<ListItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<{ id: string; full_name: string; role: string } | null>(null)
@@ -48,47 +48,53 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const supabase = createClient()
-        const { data: { user: authUser } } = await supabase.auth.getUser()
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const supabase = createClient()
+      const { data: { user: authUser } } = await supabase.auth.getUser()
 
-        if (!authUser) {
-          router.push(`/login?redirect=/qr/${id}`)
-          return
-        }
-
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id, full_name, role')
-          .eq('id', authUser.id)
-          .single()
-
-        setUser(userData)
-
-        // Try loading a list first (lists share the same QR namespace)
-        const [maybeList, eventsData] = await Promise.all([
-          listService.getById(id),
-          eventService.getAll(),
-        ])
-
-        if (maybeList) {
-          setList(maybeList)
-          setEvents(eventsData)
-          setLoading(false)
-          return
-        }
-      } catch {
-        toast.error('Error al cargar')
-      } finally {
-        setLoading(false)
+      if (!authUser) {
+        router.push(`/login?redirect=/qr/${id}`)
+        return
       }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id, full_name, role')
+        .eq('id', authUser.id)
+        .single()
+
+      setUser(userData)
+
+      // Try loading a list first (lists share the same QR namespace)
+      const [maybeList, eventsData] = await Promise.all([
+        listService.getById(id),
+        eventService.getAll(),
+      ])
+
+      if (maybeList) {
+        setList(maybeList)
+        setEvents(eventsData)
+      } else {
+        const maybeCostume = await costumeService.getById(id)
+        if (maybeCostume) {
+          setScannedCostume(maybeCostume)
+          setEvents(eventsData)
+        }
+      }
+    } catch {
+      toast.error('Error al cargar')
+    } finally {
+      setLoading(false)
     }
-    init()
   }, [id, router])
 
-  const selectedCostume = selectedListItem?.costume
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const selectedCostume = selectedListItem?.costume || scannedCostume
 
   const handleSubmit = async () => {
     if (!selectedAction || !user || !selectedCostume) return
@@ -101,6 +107,13 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
     if (selectedAction === 'damage' && !photoFile) {
       toast.error('Debes tomar una foto del daño antes de confirmarlo')
       return
+    }
+
+    if (selectedListItem && (selectedAction === 'checkout' || selectedAction === 'washing' || selectedAction === 'repair')) {
+      if (selectedListItem.stock <= 0) {
+        toast.error('No queda stock disponible de este vestuario en la lista')
+        return
+      }
     }
 
     try {
@@ -157,13 +170,13 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
     )
   }
 
-      if (!list) {
+  if (!list && !scannedCostume) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-4xl mb-3">🔍</p>
           <h2 className="font-bold text-gray-800">No encontrado</h2>
-          <p className="text-sm text-gray-500 mt-1">El código QR no corresponde a ninguna lista válida</p>
+          <p className="text-sm text-gray-500 mt-1">El código QR no corresponde a ninguna lista o vestuario válido</p>
           <Link href="/inventory">
             <Button className="mt-4">Ir al inventario</Button>
           </Link>
@@ -194,7 +207,15 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
             <p className="text-gray-500 text-sm mb-6">{performedCostume.name} · {performedCostume.code}</p>
           )}
           <div className="flex flex-col gap-2">
-            <Button onClick={() => { setDone(false); setSelectedAction(null); setSelectedListItem(null); setNotes(''); setPhotoFile(null); setSelectedEventId(null) }}>
+            <Button onClick={() => {
+              loadData()
+              setDone(false)
+              setSelectedAction(null)
+              setSelectedListItem(null)
+              setNotes('')
+              setPhotoFile(null)
+              setSelectedEventId(null)
+            }}>
               Nueva acción
             </Button>
             <Link href="/inventory">
@@ -298,6 +319,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
                     const allowed = user && (user.role === 'coordinator' || user.role === 'admin')
                       ? actions
                       : actions.filter(a => ['checkout', 'return', 'damage'].includes(a.id))
+
                     return allowed.map((action) => {
                       const Icon = action.icon
                       const isSelected = selectedAction === action.id
@@ -316,7 +338,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
                           <span className="text-xs font-semibold">{action.label}</span>
                         </button>
                       )
-                    })()
+                    })
                   })()}
                 </div>
 
@@ -325,12 +347,12 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
                     {selectedAction === 'checkout' && (
                       <div>
                         <Label>¿Para qué evento?</Label>
-                        <Select value={selectedEventId || ''} onValueChange={(value) => setSelectedEventId(value || null)}>
+                        <Select value={selectedEventId ?? 'none'} onValueChange={(value) => setSelectedEventId(value === 'none' ? null : value)}>
                           <SelectTrigger className="mt-1.5">
-                            <SelectValue>{selectedEventId ? events.find((event) => event.id === selectedEventId)?.name : 'Selecciona un evento'}</SelectValue>
+                            <SelectValue placeholder="Selecciona un evento" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Selecciona un evento</SelectItem>
+                            <SelectItem value="none">Selecciona un evento</SelectItem>
                             {events.map((event) => (
                               <SelectItem key={event.id} value={event.id}>
                                 {event.name} – {formatDate(event.date)}
@@ -490,12 +512,12 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
             {selectedAction === 'checkout' && (
               <div>
                 <Label>¿Para qué evento?</Label>
-                <Select value={selectedEventId || ''} onValueChange={(value) => setSelectedEventId(value || null)}>
+                <Select value={selectedEventId ?? 'none'} onValueChange={(value) => setSelectedEventId(value === 'none' ? null : value)}>
                   <SelectTrigger className="mt-1.5">
-                    <SelectValue>{selectedEventId ? events.find((event) => event.id === selectedEventId)?.name : 'Selecciona un evento'}</SelectValue>
+                    <SelectValue placeholder="Selecciona un evento" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Selecciona un evento</SelectItem>
+                    <SelectItem value="none">Selecciona un evento</SelectItem>
                     {events.map((event) => (
                       <SelectItem key={event.id} value={event.id}>
                         {event.name} – {formatDate(event.date)}
@@ -564,7 +586,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
             {selectedAction === 'checkout' && (
               <Button
                 onClick={async () => {
-                  if (!user || !costume) return
+                  if (!user || !selectedCostume) return
                   if (!selectedEventId) {
                     toast.error('Selecciona un evento para asignar el vestuario a tu cuenta')
                     return
@@ -574,7 +596,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
                     const res = await fetch('/api/costumes/assign', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ costumeId: costume.id, eventId: selectedEventId }),
+                      body: JSON.stringify({ costumeId: selectedCostume.id, eventId: selectedEventId }),
                     })
                     const json = await res.json()
                     if (!res.ok) throw new Error(json?.error || 'Error al asignar')

@@ -32,7 +32,7 @@ export function CreateCostumeModal({ onSuccess, onClose }: CreateCostumeModalPro
   })
   const [lists, setLists] = useState<List[]>([])
   const [selectedListId, setSelectedListId] = useState<string | null>(null)
-  const [selectedListStock, setSelectedListStock] = useState(1)
+  const [quantity, setQuantity] = useState(1)
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -78,7 +78,7 @@ export function CreateCostumeModal({ onSuccess, onClose }: CreateCostumeModalPro
       }
 
       if (selectedListId) {
-        await listService.addItem(selectedListId, costume.id, selectedListStock)
+        await listService.addItem(selectedListId, costume.id, quantity)
         toast.success('Vestuario creado y agregado a la lista')
       } else {
         toast.success('Vestuario creado exitosamente')
@@ -176,33 +176,31 @@ export function CreateCostumeModal({ onSuccess, onClose }: CreateCostumeModalPro
           </div>
 
           <div>
+            <Label htmlFor="quantity">Cantidad / Stock *</Label>
+            <Input
+              id="quantity"
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value) || 1)}
+              className="mt-1.5"
+            />
+          </div>
+
+          <div>
             <Label htmlFor="list">Agregar a lista (opcional)</Label>
-            <Select value={selectedListId ?? ''} onValueChange={(v) => setSelectedListId(v || null)}>
+            <Select value={selectedListId ?? 'none'} onValueChange={(v) => setSelectedListId(v === 'none' ? null : v)}>
               <SelectTrigger className="mt-1.5">
                 <SelectValue placeholder="Seleccionar lista" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Ninguna</SelectItem>
+                <SelectItem value="none">Ninguna</SelectItem>
                 {lists.map((list) => (
                   <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          {selectedListId && (
-            <div>
-              <Label htmlFor="stock">Stock en la lista</Label>
-              <Input
-                id="stock"
-                type="number"
-                min={1}
-                value={selectedListStock}
-                onChange={(e) => setSelectedListStock(Number(e.target.value) || 1)}
-                className="mt-1.5"
-              />
-            </div>
-          )}
 
           <div>
             <Label htmlFor="location">Ubicación</Label>

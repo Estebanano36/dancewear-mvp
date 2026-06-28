@@ -123,16 +123,49 @@ export const costumeService = {
       repair: 'send_repair',
       lost: 'mark_lost',
     }
+    const currentAction = options?.action || actionMap[status]
+
+    // Fetch list items containing this costume to adjust stock
+    const { data: listItems } = await supabase
+      .from('list_items')
+      .select('id, stock')
+      .eq('costume_id', costumeId)
+
+    let finalStatus = status
+
+    if (listItems && listItems.length > 0) {
+      for (const item of listItems) {
+        let newStock = item.stock
+        if (currentAction === 'checkout' || currentAction === 'send_wash' || currentAction === 'send_repair' || currentAction === 'mark_lost') {
+          newStock = Math.max(0, item.stock - 1)
+        } else if (currentAction === 'return') {
+          newStock = item.stock + 1
+        }
+
+        if (newStock !== item.stock) {
+          const { error: stockErr } = await supabase
+            .from('list_items')
+            .update({ stock: newStock })
+            .eq('id', item.id)
+          if (stockErr) console.error('Error updating stock:', stockErr)
+        }
+
+        // If stock is still available, keep the costume state available
+        if (newStock > 0 && status !== 'available') {
+          finalStatus = 'available'
+        }
+      }
+    }
 
     const updates: Partial<Costume> = {
-      status,
+      status: finalStatus,
       updated_at: new Date().toISOString(),
     }
 
-    if (status === 'borrowed') {
+    if (finalStatus === 'borrowed') {
       updates.current_holder_id = userId
       if (options?.eventId) updates.current_event_id = options.eventId
-    } else if (status === 'available') {
+    } else if (finalStatus === 'available') {
       updates.current_holder_id = undefined
       updates.current_event_id = undefined
     }
@@ -152,7 +185,7 @@ export const costumeService = {
         costume_id: costumeId,
         user_id: userId,
         event_id: options?.eventId,
-        action: options?.action || actionMap[status],
+        action: currentAction,
         notes: options?.notes,
         photo_url: options?.photoUrl,
       })

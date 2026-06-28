@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 
 export async function DELETE(
   request: Request,
@@ -47,14 +48,16 @@ export async function DELETE(
     return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 })
   }
 
-  const adminSupabase = createSupabaseClient(supabaseUrl, serviceRoleKey || supabaseKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  })
+  const client = serviceRoleKey
+    ? createSupabaseClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      })
+    : supabase
 
-  const { data: existingCostume, error: fetchError } = await adminSupabase
+  const { data: existingCostume, error: fetchError } = await client
     .from('costumes')
     .select('id')
     .eq('id', id)
@@ -68,7 +71,11 @@ export async function DELETE(
     return NextResponse.json({ error: 'No se encontró el vestuario para eliminar' }, { status: 404 })
   }
 
-  const { error: deleteError } = await adminSupabase
+  // Remove related list_items and movements first (in case FK cascade is not set)
+  await client.from('list_items').delete().eq('costume_id', id)
+  await client.from('costume_movements').delete().eq('costume_id', id)
+
+  const { error: deleteError } = await client
     .from('costumes')
     .delete()
     .eq('id', id)
@@ -76,6 +83,9 @@ export async function DELETE(
   if (deleteError) {
     return NextResponse.json({ error: deleteError.message }, { status: 500 })
   }
+
+  revalidatePath('/inventory')
+  revalidatePath('/lists')
 
   return NextResponse.json({ success: true }, { status: 200 })
 }
