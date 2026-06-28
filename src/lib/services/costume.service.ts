@@ -211,11 +211,8 @@ export const costumeService = {
             .eq('id', item.id)
           if (stockErr) console.error('Error updating stock:', stockErr)
         }
-
-        // If stock is still available, keep the costume state available
-        if (newStock > 0 && status !== 'available') {
-          finalStatus = 'available'
-        }
+        // NOTE: List item stock is independent from the physical costume status.
+        // Do NOT override finalStatus here — the costume's own status reflects its real state.
       }
     }
 
