@@ -54,11 +54,35 @@ export const costumeService = {
       ? crypto.randomUUID()
       : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
-    const { data, error } = await supabase
+    const insertPayload: Record<string, unknown> = {
+      ...costume,
+      code,
+      status: 'available',
+      qr_token: qrToken,
+    }
+
+    let { data, error } = await supabase
       .from('costumes')
-      .insert({ ...costume, code, qr_token: qrToken, status: 'available' })
+      .insert(insertPayload)
       .select()
       .single()
+
+    if (error) {
+      const message = error.message || ''
+      const isQrTokenMissing = message.includes('qr_token') || message.includes("Could not find the 'qr_token' column")
+
+      if (isQrTokenMissing) {
+        delete insertPayload.qr_token
+        const retryResult = await supabase
+          .from('costumes')
+          .insert(insertPayload)
+          .select()
+          .single()
+
+        data = retryResult.data
+        error = retryResult.error
+      }
+    }
 
     if (error) throw error
     return data

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import {
   CheckCircle, ArrowLeft, Droplets, Wrench,
   AlertTriangle, Package, User, Camera, Loader2
@@ -11,14 +11,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { costumeService } from '@/lib/services/costume.service'
+import { listService } from '@/lib/services/list.service'
 import { eventService } from '@/lib/services/event.service'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/utils'
-import type { Costume, Event } from '@/types'
+import type { Event, List, ListItem } from '@/types'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+export default function QRScanPage({ params }: { params: { id: string } }) {
+  const { id } = params
 type ActionType = 'checkout' | 'return' | 'washing' | 'repair' | 'damage'
 
 const actions = [
@@ -32,7 +35,8 @@ const actions = [
 export default function QRScanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const [costume, setCostume] = useState<Costume | null>(null)
+  const [list, setList] = useState<List | null>(null)
+  const [selectedListItem, setSelectedListItem] = useState<ListItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<{ id: string; full_name: string; role: string } | null>(null)
   const [selectedAction, setSelectedAction] = useState<ActionType | null>(null)
@@ -63,34 +67,17 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
 
         setUser(userData)
 
-        const [costumeData, eventsData] = await Promise.all([
-          costumeService.getById(id),
+        // Try loading a list first (lists share the same QR namespace)
+        const [maybeList, eventsData] = await Promise.all([
+          listService.getById(id),
           eventService.getAll(),
         ])
 
-        setCostume(costumeData)
-        setEvents(eventsData)
-        // Auto-assign: si el usuario es bailarin, el vestuario está disponible y hay exactamente
-        // un evento próximo, asignarlo automáticamente para agilizar el flujo QR.
-        if (
-          userData?.role === 'dancer' &&
-          costumeData &&
-          (costumeData.status === 'available' || costumeData.status === 'reserved') &&
-          eventsData.length === 1
-        ) {
-          try {
-            const ev = eventsData[0]
-            await fetch('/api/costumes/assign', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ costumeId: costumeData.id, eventId: ev.id }),
-            })
-            toast.success('Vestuario asignado automáticamente al evento')
-            router.refresh()
-            return
-          } catch (e) {
-            // silenciar; el usuario verá la UI normal
-          }
+        if (maybeList) {
+          setList(maybeList)
+          setEvents(eventsData)
+          setLoading(false)
+          return
         }
       } catch {
         toast.error('Error al cargar')
@@ -101,8 +88,10 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
     init()
   }, [id, router])
 
+  const selectedCostume = selectedListItem?.costume
+
   const handleSubmit = async () => {
-    if (!selectedAction || !user || !costume) return
+    if (!selectedAction || !user || !selectedCostume) return
 
     if (selectedAction === 'checkout' && !selectedEventId) {
       toast.error('Selecciona un evento para registrar el retiro')
@@ -119,12 +108,12 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
       let photoUrl: string | undefined
 
       if (photoFile) {
-        photoUrl = await costumeService.uploadPhoto(photoFile, costume.id)
+        photoUrl = await costumeService.uploadPhoto(photoFile, selectedCostume.id)
       }
 
       if (selectedAction === 'damage') {
         await costumeService.reportDamage({
-          costume_id: costume.id,
+          costume_id: selectedCostume.id,
           reported_by: user.id,
           description: notes || 'Daño reportado vía QR',
           severity,
@@ -138,7 +127,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
           repair: 'repair' as const,
         }
         await costumeService.updateStatus(
-          costume.id,
+          selectedCostume.id,
           statusMap[selectedAction as keyof typeof statusMap],
           user.id,
           {
@@ -148,9 +137,6 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
           }
         )
       }
-
-      // If the action was checkout and user selected an event, we also support a fast assign flow
-      // (records already created by updateStatus)
 
       setDone(true)
     } catch (err) {
@@ -171,13 +157,13 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
     )
   }
 
-  if (!costume) {
+      if (!list) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-4xl mb-3">🔍</p>
-          <h2 className="font-bold text-gray-800">Vestuario no encontrado</h2>
-          <p className="text-sm text-gray-500 mt-1">El código QR no corresponde a ningún vestuario</p>
+          <h2 className="font-bold text-gray-800">No encontrado</h2>
+          <p className="text-sm text-gray-500 mt-1">El código QR no corresponde a ninguna lista válida</p>
           <Link href="/inventory">
             <Button className="mt-4">Ir al inventario</Button>
           </Link>
@@ -194,6 +180,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
       repair: 'Enviado a arreglo',
       damage: 'Daño reportado',
     }
+    const performedCostume = selectedCostume
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
@@ -203,15 +190,215 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
           <h2 className="text-xl font-bold text-gray-900 mb-1">
             {actionLabels[selectedAction!]}
           </h2>
-          <p className="text-gray-500 text-sm mb-6">{costume.name} · {costume.code}</p>
+          {performedCostume && (
+            <p className="text-gray-500 text-sm mb-6">{performedCostume.name} · {performedCostume.code}</p>
+          )}
           <div className="flex flex-col gap-2">
-            <Button onClick={() => { setDone(false); setSelectedAction(null); setNotes('') }}>
+            <Button onClick={() => { setDone(false); setSelectedAction(null); setSelectedListItem(null); setNotes(''); setPhotoFile(null); setSelectedEventId(null) }}>
               Nueva acción
             </Button>
             <Link href="/inventory">
               <Button variant="outline" className="w-full">Ir al inventario</Button>
             </Link>
           </div>
+        </div>
+      </div>
+    )
+  }
+  // If we loaded a list, show a simple list view with items
+  if (list) {
+    const selectedItem = selectedListItem
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center overflow-hidden p-1">
+            <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain" />
+          </div>
+          <span className="font-bold text-gray-900">ArabelaEspectaculos</span>
+          <span className="ml-auto text-xs text-gray-400">Lista · {list.name}</span>
+        </div>
+        <div className="p-4 max-w-3xl mx-auto">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
+            <h2 className="font-bold text-lg">{list.name}</h2>
+            {list.description && <p className="text-sm text-gray-500">{list.description}</p>}
+          </div>
+
+          {list.items && list.items.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {list.items.map((it) => {
+                const isSelected = selectedItem?.id === it.id
+                return (
+                  <button
+                    key={it.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedListItem(it)
+                      setSelectedAction(null)
+                      setSelectedEventId(null)
+                      setNotes('')
+                      setPhotoFile(null)
+                      setDone(false)
+                    }}
+                    className={`text-left bg-white rounded-xl border p-4 flex gap-3 items-center transition-shadow ${isSelected ? 'border-violet-500 shadow-sm' : 'border-gray-100 hover:shadow-sm'}`}
+                  >
+                    <div className="w-20 h-20 bg-gray-50 rounded overflow-hidden flex-shrink-0">
+                      {it.costume?.photos?.[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={it.costume.photos[0]} alt={it.costume.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300">👗</div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold truncate">{it.costume?.name || '—'}</div>
+                      <div className="text-xs text-gray-400">{it.costume?.code}</div>
+                      <div className="text-sm text-gray-600 mt-2">Stock: <span className="font-medium">{it.stock}</span></div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center text-gray-400">No hay elementos en esta lista</div>
+          )}
+
+          {!selectedItem ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-sm text-gray-500">
+              Selecciona un elemento para registrar una acción como retirar, devolver, lavado, arreglo o daño.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {selectedItem.costume?.photos?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={selectedItem.costume.photos[0]} alt={selectedItem.costume.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-7 h-7 text-violet-300" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-bold text-gray-900 truncate">{selectedItem.costume?.name}</h2>
+                    <p className="text-xs text-gray-400">{selectedItem.costume?.code} · {selectedItem.costume?.category} · {selectedItem.costume?.size}</p>
+                    <div className="mt-1">
+                      <StatusBadge status={selectedItem.costume?.status ?? 'available'} size="sm" />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-gray-50 text-sm text-gray-600">
+                  Stock en lista: <span className="font-medium">{selectedItem.stock}</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
+                <p className="text-sm font-semibold text-gray-600">¿Qué deseas hacer con este elemento?</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(() => {
+                    const allowed = user && (user.role === 'coordinator' || user.role === 'admin')
+                      ? actions
+                      : actions.filter(a => ['checkout', 'return', 'damage'].includes(a.id))
+                    return allowed.map((action) => {
+                      const Icon = action.icon
+                      const isSelected = selectedAction === action.id
+                      return (
+                        <button
+                          key={action.id}
+                          type="button"
+                          onClick={() => setSelectedAction(action.id)}
+                          className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                            isSelected
+                              ? `${action.activeBg} ${action.activeText} border-transparent shadow-md scale-105`
+                              : `${action.bg} ${action.color} ${action.border} hover:scale-102`
+                          }`}
+                        >
+                          <Icon className={`w-5 h-5 ${action.iconClass}`} />
+                          <span className="text-xs font-semibold">{action.label}</span>
+                        </button>
+                      )
+                    })()
+                  })()}
+                </div>
+
+                {selectedAction && (
+                  <div className="space-y-4">
+                    {selectedAction === 'checkout' && (
+                      <div>
+                        <Label>¿Para qué evento?</Label>
+                        <Select value={selectedEventId || ''} onValueChange={(value) => setSelectedEventId(value || null)}>
+                          <SelectTrigger className="mt-1.5">
+                            <SelectValue>{selectedEventId ? events.find((event) => event.id === selectedEventId)?.name : 'Selecciona un evento'}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Selecciona un evento</SelectItem>
+                            {events.map((event) => (
+                              <SelectItem key={event.id} value={event.id}>
+                                {event.name} – {formatDate(event.date)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {selectedAction === 'damage' && (
+                      <div>
+                        <Label>Severidad del daño</Label>
+                        <Select value={severity} onValueChange={(v: 'low' | 'medium' | 'high') => setSeverity(v)}>
+                          <SelectTrigger className="mt-1.5">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">🟡 Leve</SelectItem>
+                            <SelectItem value="medium">🟠 Moderado</SelectItem>
+                            <SelectItem value="high">🔴 Grave</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label htmlFor="qr-notes">Observaciones {selectedAction === 'damage' ? '(describe el daño)' : '(opcional)'}</Label>
+                      <Textarea
+                        id="qr-notes"
+                        className="mt-1.5"
+                        placeholder={selectedAction === 'damage' ? 'Describe el daño...' : 'Notas adicionales...'}
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 px-3 py-3 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 active:scale-95 transition-all">
+                        <Camera className="w-5 h-5 text-gray-400" />
+                        <span className="text-sm text-gray-500 flex-1">
+                          {photoFile ? photoFile.name : 'Tomar foto (opcional)'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                        />
+                      </label>
+                    </div>
+
+                    <Button
+                      onClick={handleSubmit}
+                      loading={submitting}
+                      size="xl"
+                      className="w-full"
+                      variant={selectedAction === 'damage' ? 'destructive' : selectedAction === 'return' ? 'success' : 'default'}
+                    >
+                      {submitting ? 'Procesando...' : 'Confirmar acción'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -235,34 +422,34 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {costume.photos?.[0] ? (
+              {selectedCostume?.photos?.[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={costume.photos[0]} alt={costume.name} className="w-full h-full object-cover" />
+                <img src={selectedCostume.photos[0]} alt={selectedCostume.name} className="w-full h-full object-cover" />
               ) : (
                 <Package className="w-7 h-7 text-violet-300" />
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-gray-900 truncate">{costume.name}</h2>
-              <p className="text-xs text-gray-400">{costume.code} · {costume.category} · {costume.size}</p>
+              <h2 className="font-bold text-gray-900 truncate">{selectedCostume?.name}</h2>
+              <p className="text-xs text-gray-400">{selectedCostume?.code} · {selectedCostume?.category} · {selectedCostume?.size}</p>
               <div className="mt-1">
-                <StatusBadge status={costume.status} size="sm" />
+                {selectedCostume?.status && <StatusBadge status={selectedCostume.status} size="sm" />}
               </div>
             </div>
           </div>
 
-          {(costume.current_holder || costume.current_event) && (
+          {(selectedCostume?.current_holder || selectedCostume?.current_event) && (
             <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
-              {costume.current_holder && (
+              {selectedCostume?.current_holder && (
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <User className="w-3.5 h-3.5 text-gray-400" />
-                  Con: <span className="font-medium">{costume.current_holder.full_name}</span>
+                  Con: <span className="font-medium">{selectedCostume.current_holder.full_name}</span>
                 </div>
               )}
-              {costume.current_event && (
+              {selectedCostume?.current_event && (
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <Package className="w-3.5 h-3.5 text-gray-400" />
-                  Evento: <span className="font-medium">{costume.current_event.name}</span>
+                  Evento: <span className="font-medium">{selectedCostume.current_event.name}</span>
                 </div>
               )}
             </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Plus, Calendar, MapPin, Shirt, User, X, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -144,8 +144,8 @@ function AssignCostumeModal({
   )
 }
 
-export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function EventDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { user } = useUser()
   const [event, setEvent] = useState<Event | null>(null)

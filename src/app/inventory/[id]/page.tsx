@@ -1,15 +1,14 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, QrCode, Edit3, AlertTriangle, RotateCcw,
+  ArrowLeft, AlertTriangle, RotateCcw,
   Droplets, Wrench, Package, User, Calendar, MapPin,
   Clock, Camera, CheckCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { QRModal } from '@/components/qr/qr-modal'
 import { costumeService } from '@/lib/services/costume.service'
 import { useUser } from '@/hooks/use-user'
 import { formatDateTime, formatDate } from '@/utils'
@@ -181,14 +180,13 @@ const movementLabels: Record<string, string> = {
   status_change: 'Estado cambiado por',
 }
 
-export default function CostumeDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function CostumeDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { user } = useUser()
   const [costume, setCostume] = useState<Costume | null>(null)
   const [history, setHistory] = useState<CostumeMovement[]>([])
   const [loading, setLoading] = useState(true)
-  const [showQR, setShowQR] = useState(false)
   const [activeAction, setActiveAction] = useState<ActionModalProps['action'] | null>(null)
 
   const fetchData = async () => {
@@ -262,13 +260,6 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
             <p className="text-xs text-violet-300 mt-2">Sin foto</p>
           </div>
         )}
-        <button
-          onClick={() => setShowQR(true)}
-          className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 flex items-center gap-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-white transition-colors"
-        >
-          <QrCode className="w-3.5 h-3.5" />
-          Ver QR
-        </button>
       </div>
 
       {/* Info cards */}
@@ -416,7 +407,6 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {showQR && <QRModal costume={costume} onClose={() => setShowQR(false)} />}
       {activeAction && user && (
         <ActionModal
           costume={costume}

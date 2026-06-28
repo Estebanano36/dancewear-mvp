@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🩰 ArabelaEspectaculos MVP
 
 Sistema web profesional para gestión de vestuarios de academia de baile.
@@ -31,26 +30,30 @@ npm install
 3. Verifica que el bucket `costume-photos` esté creado como **public**
 
 ### 3. Variables de entorno
+La aplicación requiere las variables de Supabase para ejecutarse localmente. Copia el archivo de ejemplo y edítalo con las credenciales de tu proyecto:
+
 ```bash
-cp .env.example .env.local
-# Edita .env.local con tus credenciales de Supabase
+cp .env.local.example .env.local
+# luego edita .env.local con tus valores
 ```
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+Las variables principales son:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- (opcional) `SUPABASE_SERVICE_ROLE_KEY` — usado por rutas server-side con privilegios
+- `NEXT_PUBLIC_APP_URL` — URL base (ej: http://localhost:3000)
+
+Después de configurar las variables, ejecuta la app:
+
+```bash
+npm run dev
 ```
 
 ### 4. Usuarios demo (opcional)
 En Supabase → Authentication → Add user:
-- `coordinador@demo.com` / `Demo1234!` con metadata: `{"full_name":"Ana Coord","role":"coordinator"}`
-- `bailarin@demo.com` / `Demo1234!` con metadata: `{"full_name":"Luis Bailarín","role":"dancer"}`
-
-### 5. Correr
-```bash
-npm run dev
-```
+- `coordinador@demo.com` / `Demo1234!` con metadata: {"full_name":"Ana Coord","role":"coordinator"}
+- `bailarin@demo.com` / `Demo1234!` con metadata: {"full_name":"Luis Bailarín","role":"dancer"}
 
 ---
 
@@ -58,7 +61,7 @@ npm run dev
 ```bash
 vercel --prod
 ```
-Agrega las 3 variables de entorno en Vercel Settings.
+Agrega las variables de entorno en Vercel Settings.
 
 ---
 
@@ -71,9 +74,9 @@ Agrega las 3 variables de entorno en Vercel Settings.
 
 ---
 
-## 🗄 Tablas
+## 🗄 Tablas principales
 - `users` — Perfiles (coordinador / dancer)
-- `costumes` — Inventario de vestuarios  
+- `costumes` — Inventario de vestuarios
 - `costume_movements` — Historial completo
 - `events` — Eventos y presentaciones
 - `event_costumes` — Vestuarios por evento
@@ -82,7 +85,4 @@ Agrega las 3 variables de entorno en Vercel Settings.
 ---
 
 ## 🛠 Stack
-Next.js 15 · React · TailwindCSS · Supabase · TypeScript · Vercel
-=======
-# dancewear-mvp
->>>>>>> 81ad00af0d036372a60863d47ae747897250bfc5
+Next.js · React · TailwindCSS · Supabase · TypeScript · Vercel

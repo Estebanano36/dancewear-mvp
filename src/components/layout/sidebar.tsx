@@ -12,6 +12,7 @@ import {
   QrCode,
   Menu,
   X,
+  List as ListIcon,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn, getInitials } from '@/utils'
@@ -27,6 +28,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/inventory', label: 'Inventario', icon: Shirt },
+  { href: '/lists', label: 'Listas', icon: ListIcon },
   { href: '/events', label: 'Eventos', icon: Calendar },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
   { href: '/settings', label: 'Configuración', icon: Settings },

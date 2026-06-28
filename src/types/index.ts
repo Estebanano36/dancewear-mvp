@@ -193,3 +193,23 @@ export const COSTUME_CATEGORIES = [
 ]
 
 export const COSTUME_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Único']
+
+export interface ListItem {
+  id: string
+  list_id: string
+  costume_id: string
+  stock: number
+  created_at: string
+  // Relations
+  costume?: Costume
+}
+
+export interface List {
+  id: string
+  name: string
+  description?: string
+  created_at: string
+  updated_at?: string
+  // Relations
+  items?: ListItem[]
+}

@@ -3,8 +3,8 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import QRCode from 'qrcode'
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const { id } = params
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY

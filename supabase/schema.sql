@@ -230,6 +230,74 @@ create policy "Coordinators (and admins) can update damage reports" on public.da
     exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
   );
 
+-- ── 14. TABLA LISTS Y LIST_ITEMS ─────────────────────────────────
+create table public.lists (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  description text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.lists enable row level security;
+create index idx_lists_name on public.lists(name);
+
+create table public.list_items (
+  id uuid primary key default uuid_generate_v4(),
+  list_id uuid not null references public.lists(id) on delete cascade,
+  costume_id uuid not null references public.costumes(id) on delete cascade,
+  stock integer not null default 1,
+  created_at timestamptz not null default now(),
+  unique(list_id, costume_id)
+);
+
+alter table public.list_items enable row level security;
+create index idx_list_items_list on public.list_items(list_id);
+create index idx_list_items_costume on public.list_items(costume_id);
+
+create trigger trg_lists_updated
+  before update on public.lists
+  for each row execute function update_updated_at();
+
+create policy "Lists viewable by authenticated" on public.lists
+  for select using (auth.role() = 'authenticated');
+create policy "Coordinators and admins can insert lists" on public.lists
+  for insert with check (
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
+  );
+
+create policy "Coordinators and admins can update lists" on public.lists
+  for update using (
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
+  ) with check (
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
+  );
+
+create policy "Coordinators and admins can delete lists" on public.lists
+  for delete using (
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
+  );
+
+create policy "List items viewable" on public.list_items
+  for select using (auth.role() = 'authenticated');
+
+create policy "Coordinators and admins can insert list items" on public.list_items
+  for insert with check (
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
+  );
+
+create policy "Coordinators and admins can update list items" on public.list_items
+  for update using (
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
+  ) with check (
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
+  );
+
+create policy "Coordinators and admins can delete list items" on public.list_items
+  for delete using (
+    exists (select 1 from public.users where id = auth.uid() and role in ('coordinator','admin'))
+  );
+
 -- ── 12. STORAGE BUCKET ──────────────────────────────────────
 -- Ejecutar esto en el dashboard de Supabase Storage o como SQL:
 insert into storage.buckets (id, name, public)

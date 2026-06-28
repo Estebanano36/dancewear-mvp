@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { costumeService } from '@/lib/services/costume.service'
-import { COSTUME_CATEGORIES, COSTUME_SIZES } from '@/types'
+import { listService } from '@/lib/services/list.service'
+import { COSTUME_CATEGORIES, COSTUME_SIZES, List } from '@/types'
 import { toast } from 'sonner'
 
 interface CreateCostumeModalProps {
@@ -29,6 +30,9 @@ export function CreateCostumeModal({ onSuccess, onClose }: CreateCostumeModalPro
     location: '',
     notes: '',
   })
+  const [lists, setLists] = useState<List[]>([])
+  const [selectedListId, setSelectedListId] = useState<string | null>(null)
+  const [selectedListStock, setSelectedListStock] = useState(1)
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -39,6 +43,18 @@ export function CreateCostumeModal({ onSuccess, onClose }: CreateCostumeModalPro
       reader.readAsDataURL(file)
     }
   }
+
+  useEffect(() => {
+    const loadLists = async () => {
+      try {
+        const allLists = await listService.getAll()
+        setLists(allLists)
+      } catch {
+        // ignore
+      }
+    }
+    loadLists()
+  }, [])
 
   const handleSubmit = async () => {
     if (!form.name || !form.category || !form.size) {
@@ -61,11 +77,26 @@ export function CreateCostumeModal({ onSuccess, onClose }: CreateCostumeModalPro
         await costumeService.update(costume.id, { photos: [photoUrl] })
       }
 
-      toast.success('Vestuario creado exitosamente')
+      if (selectedListId) {
+        await listService.addItem(selectedListId, costume.id, selectedListStock)
+        toast.success('Vestuario creado y agregado a la lista')
+      } else {
+        toast.success('Vestuario creado exitosamente')
+      }
+
       onSuccess()
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al crear vestuario')
+      console.error('Error creando vestuario:', err)
+      let message = 'Error al crear vestuario'
+      if (err instanceof Error) message = err.message
+      else if (typeof err === 'object' && err !== null) {
+        const e = err as Record<string, unknown>
+        if (typeof e.message === 'string') message = e.message
+        else if (typeof e.error === 'string') message = e.error
+        else message = JSON.stringify(e)
+      }
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -143,6 +174,35 @@ export function CreateCostumeModal({ onSuccess, onClose }: CreateCostumeModalPro
               </Select>
             </div>
           </div>
+
+          <div>
+            <Label htmlFor="list">Agregar a lista (opcional)</Label>
+            <Select value={selectedListId ?? ''} onValueChange={(v) => setSelectedListId(v || null)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="Seleccionar lista" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Ninguna</SelectItem>
+                {lists.map((list) => (
+                  <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedListId && (
+            <div>
+              <Label htmlFor="stock">Stock en la lista</Label>
+              <Input
+                id="stock"
+                type="number"
+                min={1}
+                value={selectedListStock}
+                onChange={(e) => setSelectedListStock(Number(e.target.value) || 1)}
+                className="mt-1.5"
+              />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="location">Ubicación</Label>
