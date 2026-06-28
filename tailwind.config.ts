@@ -10,7 +10,7 @@ const config: Config = {
     extend: {
       colors: {
         violet: {
-          50: '#f5f3ff',
+          50: '#f5f3fe',
           100: '#ede9fe',
           200: '#ddd6fe',
           300: '#c4b5fd',
