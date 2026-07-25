@@ -2,8 +2,8 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, Suspense } from 'react'
-import { Search, FolderPlus, Plus, Upload, X } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import { Search, FolderPlus, Plus, Upload, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -28,6 +28,17 @@ const STATUS_LABELS: Record<string, string> = {
   reserved: 'Reservados',
 }
 
+const PAGE_SIZE = 60
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(t)
+  }, [value, delay])
+  return debounced
+}
+
 function InventoryContent() {
   const { user } = useUser()
   const searchParams = useSearchParams()
@@ -35,13 +46,21 @@ function InventoryContent() {
 
   const [lists, setLists] = useState<InventoryList[]>([])
   const [costumes, setCostumes] = useState<Costume[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
   const [activeTab, setActiveTab] = useState<'lists' | 'costumes'>('lists')
   const [statusFilter, setStatusFilter] = useState<CostumeStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [showCreateList, setShowCreateList] = useState(false)
   const [showCreateCostume, setShowCreateCostume] = useState(false)
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   const [searchInput, setSearchInput] = useState('')
+
+  const debouncedSearch = useDebounce(searchInput, 400)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const loadingRef = useRef(false)
 
   // On mount: if ?status= is present, jump to costumes tab and set filter
   useEffect(() => {
@@ -52,37 +71,106 @@ function InventoryContent() {
     }
   }, [searchParams])
 
-  const loadData = async () => {
+  // Load lists (lightweight, no pagination needed)
+  const loadLists = useCallback(async () => {
     try {
-      setLoading(true)
-      const [listsData, costumesData] = await Promise.all([
-        listService.getAll(),
-        costumeService.getAll()
-      ])
-      setLists(listsData)
-      // Deduplicate to prevent duplicate keys in case of concurrent writes/pagination shifts
-      const uniqueCostumes = costumesData.filter(
-        (c, idx, self) => self.findIndex((t) => t.id === c.id) === idx
-      )
-      setCostumes(uniqueCostumes)
+      const data = await listService.getAll()
+      setLists(data)
+    } catch {
+      toast.error('Error al cargar listas')
+    }
+  }, [])
+
+  // Load first page of costumes (reset)
+  const loadCostumes = useCallback(async (search: string, status: CostumeStatus | null) => {
+    if (loadingRef.current) return
+    loadingRef.current = true
+    setLoading(true)
+    try {
+      const result = await costumeService.getAllPaginated({
+        search: search || undefined,
+        status: status || undefined,
+        page: 0,
+        pageSize: PAGE_SIZE,
+      })
+      setCostumes(result.data)
+      setTotal(result.total)
+      setPage(0)
+      setHasMore(result.data.length === PAGE_SIZE && result.total > PAGE_SIZE)
     } catch {
       toast.error('Error al cargar el inventario')
     } finally {
       setLoading(false)
+      loadingRef.current = false
     }
-  }
-
-  useEffect(() => {
-    loadData()
   }, [])
 
-  const handleSearch = (value: string) => {
-    setSearchInput(value)
-  }
+  // Load next page for infinite scroll
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current || loadingMore || !hasMore) return
+    loadingRef.current = true
+    setLoadingMore(true)
+    const nextPage = page + 1
+    try {
+      const result = await costumeService.getAllPaginated({
+        search: debouncedSearch || undefined,
+        status: statusFilter || undefined,
+        page: nextPage,
+        pageSize: PAGE_SIZE,
+      })
+      setCostumes((prev) => {
+        // Deduplicate
+        const ids = new Set(prev.map((c) => c.id))
+        const newItems = result.data.filter((c) => !ids.has(c.id))
+        return [...prev, ...newItems]
+      })
+      setPage(nextPage)
+      setHasMore(result.data.length === PAGE_SIZE)
+    } catch {
+      toast.error('Error al cargar más vestuarios')
+    } finally {
+      setLoadingMore(false)
+      loadingRef.current = false
+    }
+  }, [loadingMore, hasMore, page, debouncedSearch, statusFilter])
+
+  // Reload when search or status filter changes
+  useEffect(() => {
+    if (activeTab === 'costumes') {
+      loadCostumes(debouncedSearch, statusFilter)
+    }
+  }, [debouncedSearch, statusFilter, activeTab, loadCostumes])
+
+  // Load lists once on mount
+  useEffect(() => {
+    loadLists()
+  }, [loadLists])
+
+  // Switch to costumes tab: load if not loaded yet
+  useEffect(() => {
+    if (activeTab === 'costumes' && costumes.length === 0 && !loading) {
+      loadCostumes(debouncedSearch, statusFilter)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
+
+  // Intersection observer for infinite scroll sentinel
+  useEffect(() => {
+    if (!sentinelRef.current) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          loadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loadMore])
 
   const clearStatusFilter = () => {
     setStatusFilter(null)
-    // Remove ?status param from URL without navigation
     router.replace('/inventory', { scroll: false })
   }
 
@@ -91,15 +179,13 @@ function InventoryContent() {
     (list.description || '').toLowerCase().includes(searchInput.trim().toLowerCase())
   )
 
-  const filteredCostumes = costumes.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
-      c.code.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
-      c.category.toLowerCase().includes(searchInput.trim().toLowerCase()) ||
-      (c.location || '').toLowerCase().includes(searchInput.trim().toLowerCase())
-    const matchesStatus = statusFilter ? c.status === statusFilter : true
-    return matchesSearch && matchesStatus
-  })
+  const handleTabChange = (tab: 'lists' | 'costumes') => {
+    setActiveTab(tab)
+    setSearchInput('')
+    if (tab === 'costumes' && costumes.length === 0) {
+      loadCostumes('', statusFilter)
+    }
+  }
 
   return (
     <div>
@@ -108,7 +194,9 @@ function InventoryContent() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Inventario</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {loading ? 'Cargando...' : activeTab === 'lists' ? `${filteredLists.length} listas` : `${filteredCostumes.length} vestuarios`}
+            {loading ? 'Cargando...' : activeTab === 'lists'
+              ? `${filteredLists.length} listas`
+              : `${costumes.length} de ${total} vestuarios`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -134,7 +222,7 @@ function InventoryContent() {
       {/* Tabs */}
       <div className="flex gap-4 border-b border-gray-100 mb-6">
         <button
-          onClick={() => { setActiveTab('lists'); setSearchInput('') }}
+          onClick={() => handleTabChange('lists')}
           className={`pb-3 text-sm font-semibold border-b-2 px-1 transition-all duration-150 ${
             activeTab === 'lists'
               ? 'border-violet-600 text-violet-600'
@@ -144,7 +232,7 @@ function InventoryContent() {
           Colecciones / Listas
         </button>
         <button
-          onClick={() => { setActiveTab('costumes'); setSearchInput('') }}
+          onClick={() => handleTabChange('costumes')}
           className={`pb-3 text-sm font-semibold border-b-2 px-1 transition-all duration-150 ${
             activeTab === 'costumes'
               ? 'border-violet-600 text-violet-600'
@@ -159,10 +247,10 @@ function InventoryContent() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4">
         <div className="flex flex-col sm:flex-row gap-3 items-center">
           <Input
-            placeholder={activeTab === 'lists' ? "Buscar listas por nombre o descripción..." : "Buscar prendas por nombre, código o categoría..."}
+            placeholder={activeTab === 'lists' ? "Buscar listas por nombre o descripción..." : "Buscar prendas por nombre, código, categoría o ubicación..."}
             leftIcon={<Search className="w-4 h-4" />}
             value={searchInput}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="flex-1"
           />
           {/* Active status filter pill */}
@@ -179,9 +267,9 @@ function InventoryContent() {
             </div>
           )}
           <div className="text-sm text-gray-500 flex-shrink-0">
-            {activeTab === 'lists' 
+            {activeTab === 'lists'
               ? `${filteredLists.length} ${filteredLists.length === 1 ? 'lista' : 'listas'}`
-              : `${filteredCostumes.length} ${filteredCostumes.length === 1 ? 'prenda' : 'prendas'}`
+              : loading ? '...' : `${total} ${total === 1 ? 'prenda' : 'prendas'}`
             }
           </div>
         </div>
@@ -189,11 +277,7 @@ function InventoryContent() {
 
       {activeTab === 'lists' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading ? (
-            [...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-pulse h-40" />
-            ))
-          ) : filteredLists.length === 0 ? (
+          {lists.length === 0 && !loading ? (
             <div className="col-span-full py-16 text-center text-gray-400">
               <p className="text-4xl mb-3">📋</p>
               <p className="font-medium">No se encontraron listas</p>
@@ -211,45 +295,73 @@ function InventoryContent() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading ? (
-            [...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-pulse h-24" />
-            ))
-          ) : filteredCostumes.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-gray-400">
-              <p className="text-4xl mb-3">👗</p>
-              <p className="font-medium">No se encontraron vestuarios</p>
-            </div>
-          ) : (
-            filteredCostumes.map((costume) => (
-              <Link key={costume.id} href={`/inventory/${costume.id}`} className="block">
-                <div className="bg-white rounded-xl border border-gray-100 p-4 flex gap-3 items-center hover:shadow-md transition-shadow h-full">
-                  <div className="w-14 h-14 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0 relative border border-gray-100 flex items-center justify-center">
-                    {costume.photos?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={costume.photos[0]} alt={costume.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-2xl">👗</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-900 truncate text-sm">{costume.name}</div>
-                    <div className="text-[11px] text-gray-400 font-mono mt-0.5">{costume.code}</div>
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 font-semibold">
-                        {costume.category}
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gray-50 text-gray-600 font-medium font-mono border border-gray-100">
-                        Talla {costume.size}
-                      </span>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loading ? (
+              [...Array(12)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-pulse h-24" />
+              ))
+            ) : costumes.length === 0 ? (
+              <div className="col-span-full py-16 text-center text-gray-400">
+                <p className="text-4xl mb-3">👗</p>
+                <p className="font-medium">No se encontraron vestuarios</p>
+              </div>
+            ) : (
+              costumes.map((costume) => (
+                <Link key={costume.id} href={`/inventory/${costume.id}`} className="block">
+                  <div className="bg-white rounded-xl border border-gray-100 p-4 flex gap-3 items-center hover:shadow-md transition-shadow h-full">
+                    <div className="w-14 h-14 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0 relative border border-gray-100 flex items-center justify-center">
+                      {costume.photos?.[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={costume.photos[0]}
+                          alt={costume.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <span className="text-2xl">👗</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 truncate text-sm">{costume.name}</div>
+                      <div className="text-[11px] text-gray-400 font-mono mt-0.5">{costume.code}</div>
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 font-semibold">
+                          {costume.category}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gray-50 text-gray-600 font-medium font-mono border border-gray-100">
+                          Talla {costume.size}
+                        </span>
+                        <StatusBadge status={costume.status} className="text-[10px] px-1.5 py-0.5" />
+                      </div>
                     </div>
                   </div>
+                </Link>
+              ))
+            )}
+          </div>
+
+          {/* Infinite scroll sentinel */}
+          {!loading && hasMore && (
+            <div ref={sentinelRef} className="flex justify-center py-6">
+              {loadingMore && (
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cargando más...
                 </div>
-              </Link>
-            ))
+              )}
+            </div>
           )}
-        </div>
+
+          {/* End of results message */}
+          {!loading && !hasMore && costumes.length > 0 && (
+            <p className="text-center text-xs text-gray-400 py-4">
+              {costumes.length} de {total} prendas mostradas
+            </p>
+          )}
+        </>
       )}
 
       {showCreateList && (
@@ -264,7 +376,7 @@ function InventoryContent() {
           onClose={() => setShowCreateCostume(false)}
           onSuccess={async () => {
             setShowCreateCostume(false)
-            loadData()
+            loadCostumes(debouncedSearch, statusFilter)
           }}
         />
       )}
@@ -274,7 +386,7 @@ function InventoryContent() {
           onClose={() => setShowBulkUpload(false)}
           onSuccess={async () => {
             setShowBulkUpload(false)
-            loadData()
+            loadCostumes(debouncedSearch, statusFilter)
           }}
         />
       )}

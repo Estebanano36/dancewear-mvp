@@ -3,6 +3,44 @@ import type { Costume, CostumeMovement, CostumeStatus, DamageReport } from '@/ty
 import { generateCostumeCode } from '@/utils'
 
 export const costumeService = {
+  /**
+   * Paginated server-side fetch for the inventory list view.
+   * Returns a slice of costumes + total count for infinite scroll.
+   */
+  async getAllPaginated(options?: {
+    status?: CostumeStatus
+    search?: string
+    page?: number
+    pageSize?: number
+  }): Promise<{ data: Costume[]; total: number }> {
+    const supabase = createClient()
+    const PAGE_SIZE = options?.pageSize ?? 60
+    const page = options?.page ?? 0
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    let query = supabase
+      .from('costumes')
+      // Lightweight select for list view — no heavy relations
+      .select('id, code, name, category, size, status, photos, location, list_items(id, list_id, list:lists(id, name))', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to)
+
+    if (options?.status) query = query.eq('status', options.status)
+    if (options?.search) {
+      const term = options.search.trim()
+      query = query.or(
+        `name.ilike.%${term}%,code.ilike.%${term}%,category.ilike.%${term}%,location.ilike.%${term}%`
+      )
+    }
+
+    const { data, error, count } = await query
+    if (error) throw error
+
+    return { data: (data as unknown as Costume[]) || [], total: count ?? 0 }
+  },
+
   async getAll(filters?: {
     status?: CostumeStatus
     category?: string

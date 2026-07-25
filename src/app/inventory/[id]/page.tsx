@@ -582,6 +582,8 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
                               src={movement.photo_url}
                               alt="Foto"
                               className="mt-2 rounded-lg max-h-32 object-cover"
+                              loading="lazy"
+                              decoding="async"
                             />
                           )}
                           <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(movement.created_at)}</p>
@@ -606,6 +608,8 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
                   src={costume.photos[photoIndex]}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-25 pointer-events-none scale-125"
+                  decoding="async"
+                  loading="eager"
                 />
                 
                 {/* Main complete non-cropped vertical photo */}
@@ -616,6 +620,8 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
                   onClick={() => setZoomOpen(true)}
                   className="relative z-10 max-h-full max-w-full object-contain cursor-pointer transition-transform duration-200 hover:scale-[1.01] p-2"
                   title="Clic para ampliar pantalla completa"
+                  fetchPriority="high"
+                  decoding="async"
                 />
 
                 {/* Zoom button badge */}
@@ -710,7 +716,7 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
+                  <img src={photo} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 </button>
               ))}
             </div>
