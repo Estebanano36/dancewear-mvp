@@ -46,6 +46,14 @@ export interface Costume {
   // Relations
   current_holder?: User
   current_event?: Event
+  list_items?: {
+    id: string
+    list_id: string
+    list?: {
+      id: string
+      name: string
+    }
+  }[]
 }
 
 export interface CostumeMovement {

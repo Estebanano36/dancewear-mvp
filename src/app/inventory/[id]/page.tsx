@@ -2,11 +2,12 @@
 
 import { useState, useEffect, use, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   ArrowLeft, AlertTriangle, RotateCcw,
   Droplets, Wrench, Package, User, Calendar, MapPin,
   Clock, Camera, CheckCircle, Trash2, Pencil, X, Check,
-  ImagePlus, ChevronLeft, ChevronRight, FolderPlus
+  ImagePlus, ChevronLeft, ChevronRight, FolderPlus, Folder, FolderX
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -499,6 +500,48 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
         )}
+        {/* Lista Asignada */}
+        <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-2 col-span-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+              <Folder className="w-4 h-4 text-violet-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-gray-400">Lista asignada</p>
+              {costume.list_items && costume.list_items.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 mt-0.5">
+                  {costume.list_items.map((item) => (
+                    item.list ? (
+                      <Link
+                        key={item.id}
+                        href={`/lists/${item.list.id}`}
+                        className="inline-flex items-center gap-1 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors"
+                      >
+                        <span className="truncate">{item.list.name}</span>
+                      </Link>
+                    ) : null
+                  ))}
+                </div>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-gray-50 text-gray-500 border border-gray-200 text-xs font-medium px-2 py-0.5 rounded-md mt-0.5">
+                  <FolderX className="w-3 h-3 text-gray-400" />
+                  Sin asignar
+                </span>
+              )}
+            </div>
+          </div>
+          {(user?.role === 'coordinator' || user?.role === 'admin') && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs flex-shrink-0"
+              onClick={() => setShowAddToList(true)}
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+              {costume.list_items && costume.list_items.length > 0 ? 'Gestionar listas' : 'Asignar a lista'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Description card (always visible, allows multi-line edit for coordinators/admins) */}

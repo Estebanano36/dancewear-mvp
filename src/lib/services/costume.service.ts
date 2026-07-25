@@ -21,7 +21,8 @@ export const costumeService = {
         .select(`
           *,
           current_holder:users!costumes_current_holder_id_fkey(id, full_name, email),
-          current_event:events!costumes_current_event_id_fkey(id, name, date)
+          current_event:events!costumes_current_event_id_fkey(id, name, date),
+          list_items(id, list_id, list:lists(id, name))
         `)
         .order('created_at', { ascending: false })
         .order('id', { ascending: true })
@@ -56,7 +57,8 @@ export const costumeService = {
       .select(`
         *,
         current_holder:users!costumes_current_holder_id_fkey(id, full_name, email),
-        current_event:events!costumes_current_event_id_fkey(id, name, date)
+        current_event:events!costumes_current_event_id_fkey(id, name, date),
+        list_items(id, list_id, list:lists(id, name))
       `)
       .eq('id', id)
       .single()

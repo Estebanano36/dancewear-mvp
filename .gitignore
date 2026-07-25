@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local working files and scripts data
+202606_a/
+202606_a_compressed/
+*.log.json
+import_log.json
+optimize_log.json
+rename_mapping*.json
+*.pdf
+*.csv
+

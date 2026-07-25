@@ -1,6 +1,6 @@
 'use client'
 
-import { Shirt, User, Calendar, MapPin, Trash, Search } from 'lucide-react'
+import { Shirt, User, Calendar, MapPin, Trash, Search, Folder, FolderX } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import type { Costume } from '@/types'
@@ -54,9 +54,29 @@ export function CostumeCard({ costume, onDelete }: CostumeCardProps) {
         </div>
 
         <div className="p-4">
-          <div className="mb-3">
+          <div className="mb-2">
             <h3 className="font-semibold text-gray-900 truncate">{costume.name}</h3>
             <p className="text-xs text-gray-400 mt-0.5">{costume.code} · {costume.category}</p>
+          </div>
+
+          {/* Lista Asignada */}
+          <div className="mb-3">
+            {costume.list_items && costume.list_items.length > 0 ? (
+              <div
+                className="inline-flex items-center gap-1 bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-md font-medium text-[11px] max-w-full"
+                title={costume.list_items.map((i) => i.list?.name).filter(Boolean).join(', ')}
+              >
+                <Folder className="w-3 h-3 text-violet-500 flex-shrink-0" />
+                <span className="truncate">
+                  {costume.list_items.map((i) => i.list?.name).filter(Boolean).join(', ') || 'Lista asignada'}
+                </span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1 bg-gray-50 text-gray-400 border border-gray-100 px-2 py-0.5 rounded-md font-medium text-[11px]">
+                <FolderX className="w-3 h-3 text-gray-300 flex-shrink-0" />
+                <span>Sin asignar</span>
+              </div>
+            )}
           </div>
 
           {/* Details */}
