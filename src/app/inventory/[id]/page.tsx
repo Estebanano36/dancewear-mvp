@@ -7,8 +7,9 @@ import {
   ArrowLeft, AlertTriangle, RotateCcw,
   Droplets, Wrench, Package, User, Calendar, MapPin,
   Clock, Camera, CheckCircle, Trash2, Pencil, X, Check,
-  ImagePlus, ChevronLeft, ChevronRight, FolderPlus, Folder, FolderX
+  ImagePlus, ChevronLeft, ChevronRight, FolderPlus, Folder, FolderX, Maximize2
 } from 'lucide-react'
+import { ImageZoom } from '@/components/image-zoom'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { costumeService } from '@/lib/services/costume.service'
@@ -198,6 +199,7 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoIndex, setPhotoIndex] = useState(0)
   const [showAddToList, setShowAddToList] = useState(false)
+  const [zoomOpen, setZoomOpen] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const descInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -327,7 +329,7 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
   const canMarkAvailable = (user?.role === 'coordinator' || user?.role === 'admin') && (costume.status === 'washing' || costume.status === 'repair' || costume.status === 'lost')
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-6xl mx-auto pb-10">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Button variant="ghost" size="icon-sm" onClick={() => router.back()}>
@@ -360,330 +362,361 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
         <StatusBadge status={costume.status} />
       </div>
 
-      {/* Photos Section */}
-      <div className="mb-4">
-        {/* Main photo display */}
-        <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl h-56 overflow-hidden relative group">
-          {costume.photos && costume.photos.length > 0 ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={costume.photos[photoIndex]}
-                alt={`${costume.name} - foto ${photoIndex + 1}`}
-                className="w-full h-full object-cover"
-              />
-              {/* Navigation arrows if multiple photos */}
-              {costume.photos.length > 1 && (
-                <>
-                  <button
-                    onClick={() => setPhotoIndex((i) => (i - 1 + costume.photos!.length) % costume.photos!.length)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setPhotoIndex((i) => (i + 1) % costume.photos!.length)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                  {/* Photo counter */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
-                    {photoIndex + 1} / {costume.photos.length}
-                  </div>
-                </>
-              )}
-              {/* Delete current photo button */}
+      {/* Grid: 2 columns on desktop (Info/Actions/History on Left, Photo Gallery on Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* LEFT COLUMN (lg:col-span-7): Info, Actions, History */}
+        <div className="lg:col-span-7 space-y-4 order-2 lg:order-1">
+          
+          {/* Info cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <p className="text-xs text-gray-400 mb-1">Categoría</p>
+              <p className="font-semibold text-gray-800">{costume.category}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <p className="text-xs text-gray-400 mb-1">Talla</p>
+              <p className="font-semibold text-gray-800">{costume.size}</p>
+            </div>
+            {costume.location && (
+              <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Ubicación</p>
+                  <p className="text-sm font-medium text-gray-800">{costume.location}</p>
+                </div>
+              </div>
+            )}
+            {costume.current_holder && (
+              <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-2">
+                <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Con</p>
+                  <p className="text-sm font-medium text-gray-800">{costume.current_holder.full_name}</p>
+                </div>
+              </div>
+            )}
+            {costume.current_event && (
+              <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-2 col-span-2">
+                <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Evento</p>
+                  <p className="text-sm font-medium text-gray-800">{costume.current_event.name}</p>
+                  {costume.current_event.date && (
+                    <p className="text-xs text-gray-400">{formatDate(costume.current_event.date)}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* Lista Asignada */}
+            <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-2 col-span-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+                  <Folder className="w-4 h-4 text-violet-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-400">Lista asignada</p>
+                  {costume.list_items && costume.list_items.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-0.5">
+                      {costume.list_items.map((item) => (
+                        item.list ? (
+                          <Link
+                            key={item.id}
+                            href={`/lists/${item.list.id}`}
+                            className="inline-flex items-center gap-1 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors"
+                          >
+                            <span className="truncate">{item.list.name}</span>
+                          </Link>
+                        ) : null
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 bg-gray-50 text-gray-500 border border-gray-200 text-xs font-medium px-2 py-0.5 rounded-md mt-0.5">
+                      <FolderX className="w-3 h-3 text-gray-400" />
+                      Sin asignar
+                    </span>
+                  )}
+                </div>
+              </div>
               {(user?.role === 'coordinator' || user?.role === 'admin') && (
-                <button
-                  onClick={() => handleRemovePhoto(costume.photos![photoIndex])}
-                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                  title="Eliminar esta foto"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs flex-shrink-0"
+                  onClick={() => setShowAddToList(true)}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <FolderPlus className="w-3.5 h-3.5" />
+                  {costume.list_items && costume.list_items.length > 0 ? 'Gestionar listas' : 'Asignar a lista'}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Description card */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-400">Descripción</p>
+              {(user?.role === 'coordinator' || user?.role === 'admin') && !editingDesc && (
+                <button
+                  onClick={startEditDesc}
+                  className="text-gray-400 hover:text-violet-600 transition-colors p-1"
+                  title="Editar descripción"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
                 </button>
               )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full">
-              <span className="text-6xl">👗</span>
-              <p className="text-xs text-violet-300 mt-2">Sin foto</p>
             </div>
-          )}
-
-          {/* Upload overlay button - always visible for coordinators/admins */}
-          {(user?.role === 'coordinator' || user?.role === 'admin') && (
-            <>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) handleAddPhoto(file)
-                  e.target.value = ''
-                }}
-              />
-              <button
-                onClick={() => photoInputRef.current?.click()}
-                disabled={uploadingPhoto}
-                className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white text-violet-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm transition-all hover:shadow-md disabled:opacity-60"
-              >
-                {uploadingPhoto ? (
-                  <span className="animate-spin rounded-full border-2 border-violet-400 border-t-transparent w-3.5 h-3.5" />
-                ) : (
-                  <ImagePlus className="w-3.5 h-3.5" />
-                )}
-                {uploadingPhoto ? 'Subiendo...' : costume.photos && costume.photos.length > 0 ? 'Añadir foto' : 'Subir foto'}
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Photo thumbnails strip */}
-        {costume.photos && costume.photos.length > 1 && (
-          <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-            {costume.photos.map((photo, idx) => (
-              <button
-                key={idx}
-                onClick={() => setPhotoIndex(idx)}
-                className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                  idx === photoIndex ? 'border-violet-500 shadow-sm' : 'border-transparent opacity-60 hover:opacity-100'
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Info cards */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">Categoría</p>
-          <p className="font-semibold text-gray-800">{costume.category}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">Talla</p>
-          <p className="font-semibold text-gray-800">{costume.size}</p>
-        </div>
-        {costume.location && (
-          <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-2">
-            <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Ubicación</p>
-              <p className="text-sm font-medium text-gray-800">{costume.location}</p>
-            </div>
-          </div>
-        )}
-        {costume.current_holder && (
-          <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-2">
-            <User className="w-4 h-4 text-gray-400 mt-0.5" />
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Con</p>
-              <p className="text-sm font-medium text-gray-800">{costume.current_holder.full_name}</p>
-            </div>
-          </div>
-        )}
-        {costume.current_event && (
-          <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-2 col-span-2">
-            <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Evento</p>
-              <p className="text-sm font-medium text-gray-800">{costume.current_event.name}</p>
-              {costume.current_event.date && (
-                <p className="text-xs text-gray-400">{formatDate(costume.current_event.date)}</p>
-              )}
-            </div>
-          </div>
-        )}
-        {/* Lista Asignada */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-2 col-span-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
-              <Folder className="w-4 h-4 text-violet-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-gray-400">Lista asignada</p>
-              {costume.list_items && costume.list_items.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5 mt-0.5">
-                  {costume.list_items.map((item) => (
-                    item.list ? (
-                      <Link
-                        key={item.id}
-                        href={`/lists/${item.list.id}`}
-                        className="inline-flex items-center gap-1 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 text-xs font-semibold px-2 py-0.5 rounded-md transition-colors"
-                      >
-                        <span className="truncate">{item.list.name}</span>
-                      </Link>
-                    ) : null
-                  ))}
+            {editingDesc ? (
+              <div className="space-y-2">
+                <Textarea
+                  className="text-sm text-gray-700 w-full"
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  rows={6}
+                />
+                <div className="flex justify-end gap-1.5">
+                  <Button size="sm" variant="outline" onClick={() => setEditingDesc(false)}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={() => handleSaveEdit('description')}>
+                    Guardar
+                  </Button>
                 </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                {costume.description || 'Sin descripción'}
+              </p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            {canCheckout && (
+              <Button onClick={() => setActiveAction('checkout')} className="col-span-2">
+                <ArrowLeft className="w-4 h-4 rotate-180" />
+                Retirar vestuario
+              </Button>
+            )}
+            {canReturn && (
+              <Button onClick={() => setActiveAction('return')} variant="success" className="col-span-2">
+                <CheckCircle className="w-4 h-4" />
+                Devolver vestuario
+              </Button>
+            )}
+            {canMarkAvailable && (
+              <Button onClick={() => setActiveAction('return')} variant="success" className="col-span-2">
+                <CheckCircle className="w-4 h-4" />
+                Marcar como disponible
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setActiveAction('damage')}>
+              <AlertTriangle className="w-4 h-4" />
+              Reportar daño
+            </Button>
+            {(user?.role === 'coordinator' || user?.role === 'admin') && (
+              <>
+                <Button onClick={() => setShowAddToList(true)} className="col-span-2 bg-violet-600 hover:bg-violet-700">
+                  <FolderPlus className="w-4 h-4" />
+                  Añadir a lista
+                </Button>
+                <Button variant="outline" onClick={() => setActiveAction('washing')}>
+                  <Droplets className="w-4 h-4" />
+                  Enviar lavado
+                </Button>
+                <Button variant="outline" onClick={() => setActiveAction('repair')}>
+                  <Wrench className="w-4 h-4" />
+                  Enviar arreglo
+                </Button>
+                <Button variant="outline" onClick={() => setActiveAction('lost')} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <AlertTriangle className="w-4 h-4" />
+                  Marcar perdido
+                </Button>
+                <Button variant="outline" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50 col-span-2">
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar vestuario
+                </Button>
+              </>
+            )}
+          </div>
+
+          {/* History timeline */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm pt-2">
+            <div className="p-5 border-b border-gray-50 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <h2 className="font-semibold text-gray-900">Historial</h2>
+              <span className="ml-auto text-xs text-gray-400">{history.length} movimientos</span>
+            </div>
+            <div className="p-4">
+              {history.length === 0 ? (
+                <p className="text-center text-sm text-gray-400 py-6">Sin historial aún</p>
               ) : (
-                <span className="inline-flex items-center gap-1 bg-gray-50 text-gray-500 border border-gray-200 text-xs font-medium px-2 py-0.5 rounded-md mt-0.5">
-                  <FolderX className="w-3 h-3 text-gray-400" />
-                  Sin asignar
-                </span>
+                <div className="relative">
+                  <div className="absolute left-4 top-2 bottom-2 w-px bg-gray-100" />
+                  <div className="space-y-4">
+                    {history.map((movement) => (
+                      <div key={movement.id} className="flex items-start gap-4 pl-10 relative">
+                        <div className={`absolute left-2 w-4 h-4 rounded-full flex items-center justify-center text-white flex-shrink-0 mt-0.5 ${
+                          movement.action === 'damage_report' || movement.action === 'mark_lost'
+                            ? 'bg-red-400'
+                            : movement.action === 'return'
+                            ? 'bg-emerald-400'
+                            : movement.action === 'checkout'
+                            ? 'bg-amber-400'
+                            : 'bg-gray-300'
+                        }`}>
+                          {movementIcons[movement.action] || <RotateCcw className="w-2.5 h-2.5" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-800">
+                            <span className="text-gray-500">{movementLabels[movement.action] || movement.action}</span>
+                            {' '}
+                            <span className="font-medium">{(movement.user as { full_name: string })?.full_name}</span>
+                          </p>
+                          {movement.notes && (
+                            <p className="text-xs text-gray-500 mt-0.5">{movement.notes}</p>
+                          )}
+                          {movement.photo_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={movement.photo_url}
+                              alt="Foto"
+                              className="mt-2 rounded-lg max-h-32 object-cover"
+                            />
+                          )}
+                          <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(movement.created_at)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
-          {(user?.role === 'coordinator' || user?.role === 'admin') && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs flex-shrink-0"
-              onClick={() => setShowAddToList(true)}
-            >
-              <FolderPlus className="w-3.5 h-3.5" />
-              {costume.list_items && costume.list_items.length > 0 ? 'Gestionar listas' : 'Asignar a lista'}
-            </Button>
-          )}
         </div>
-      </div>
 
-      {/* Description card (always visible, allows multi-line edit for coordinators/admins) */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-gray-400">Descripción</p>
-          {(user?.role === 'coordinator' || user?.role === 'admin') && !editingDesc && (
-            <button
-              onClick={startEditDesc}
-              className="text-gray-400 hover:text-violet-600 transition-colors p-1"
-              title="Editar descripción"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-        {editingDesc ? (
-          <div className="space-y-2">
-            <Textarea
-              className="text-sm text-gray-700 w-full"
-              value={editDesc}
-              onChange={(e) => setEditDesc(e.target.value)}
-              rows={6}
-            />
-            <div className="flex justify-end gap-1.5">
-              <Button size="sm" variant="outline" onClick={() => setEditingDesc(false)}>
-                Cancelar
-              </Button>
-              <Button size="sm" onClick={() => handleSaveEdit('description')}>
-                Guardar
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-            {costume.description || 'Sin descripción'}
-          </p>
-        )}
-      </div>
+        {/* RIGHT COLUMN (lg:col-span-5): High quality photo display without cropping */}
+        <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-3 order-1 lg:order-2">
+          <div className="bg-slate-900 rounded-2xl h-[480px] lg:h-[540px] overflow-hidden relative group shadow-md flex items-center justify-center border border-slate-800">
+            {costume.photos && costume.photos.length > 0 ? (
+              <>
+                {/* Ambient background blur */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={costume.photos[photoIndex]}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-25 pointer-events-none scale-125"
+                />
+                
+                {/* Main complete non-cropped vertical photo */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={costume.photos[photoIndex]}
+                  alt={`${costume.name} - foto ${photoIndex + 1}`}
+                  onClick={() => setZoomOpen(true)}
+                  className="relative z-10 max-h-full max-w-full object-contain cursor-pointer transition-transform duration-200 hover:scale-[1.01] p-2"
+                  title="Clic para ampliar pantalla completa"
+                />
 
-      {/* Actions */}
-      <div className="grid grid-cols-2 gap-2 mb-6">
-        {canCheckout && (
-          <Button onClick={() => setActiveAction('checkout')} className="col-span-2">
-            <ArrowLeft className="w-4 h-4 rotate-180" />
-            Retirar vestuario
-          </Button>
-        )}
-        {canReturn && (
-          <Button onClick={() => setActiveAction('return')} variant="success" className="col-span-2">
-            <CheckCircle className="w-4 h-4" />
-            Devolver vestuario
-          </Button>
-        )}
-        {canMarkAvailable && (
-          <Button onClick={() => setActiveAction('return')} variant="success" className="col-span-2">
-            <CheckCircle className="w-4 h-4" />
-            Marcar como disponible
-          </Button>
-        )}
-        <Button variant="outline" onClick={() => setActiveAction('damage')}>
-          <AlertTriangle className="w-4 h-4" />
-          Reportar daño
-        </Button>
-        {(user?.role === 'coordinator' || user?.role === 'admin') && (
-          <>
-            <Button onClick={() => setShowAddToList(true)} className="col-span-2 bg-violet-600 hover:bg-violet-700">
-              <FolderPlus className="w-4 h-4" />
-              Añadir a lista
-            </Button>
-            <Button variant="outline" onClick={() => setActiveAction('washing')}>
-              <Droplets className="w-4 h-4" />
-              Enviar lavado
-            </Button>
-            <Button variant="outline" onClick={() => setActiveAction('repair')}>
-              <Wrench className="w-4 h-4" />
-              Enviar arreglo
-            </Button>
-            <Button variant="outline" onClick={() => setActiveAction('lost')} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-              <AlertTriangle className="w-4 h-4" />
-              Marcar perdido
-            </Button>
-            <Button variant="outline" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50 col-span-2">
-              <Trash2 className="w-4 h-4" />
-              Eliminar vestuario
-            </Button>
-          </>
-        )}
-      </div>
+                {/* Zoom button badge */}
+                <button
+                  onClick={() => setZoomOpen(true)}
+                  className="absolute top-3 left-3 z-20 bg-black/60 hover:bg-black/80 text-white px-2.5 py-1.5 rounded-lg backdrop-blur-md transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
+                  title="Ampliar pantalla completa"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Ampliar</span>
+                </button>
 
-      {/* History timeline */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-        <div className="p-5 border-b border-gray-50 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-gray-400" />
-          <h2 className="font-semibold text-gray-900">Historial</h2>
-          <span className="ml-auto text-xs text-gray-400">{history.length} movimientos</span>
-        </div>
-        <div className="p-4">
-          {history.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 py-6">Sin historial aún</p>
-          ) : (
-            <div className="relative">
-              <div className="absolute left-4 top-2 bottom-2 w-px bg-gray-100" />
-              <div className="space-y-4">
-                {history.map((movement, _i) => (
-                  <div key={movement.id} className="flex items-start gap-4 pl-10 relative">
-                    <div className={`absolute left-2 w-4 h-4 rounded-full flex items-center justify-center text-white flex-shrink-0 mt-0.5 ${
-                      movement.action === 'damage_report' || movement.action === 'mark_lost'
-                        ? 'bg-red-400'
-                        : movement.action === 'return'
-                        ? 'bg-emerald-400'
-                        : movement.action === 'checkout'
-                        ? 'bg-amber-400'
-                        : 'bg-gray-300'
-                    }`}>
-                      {movementIcons[movement.action] || <RotateCcw className="w-2.5 h-2.5" />}
+                {/* Navigation arrows if multiple photos */}
+                {costume.photos.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setPhotoIndex((i) => (i - 1 + costume.photos!.length) % costume.photos!.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors shadow-md backdrop-blur-sm"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setPhotoIndex((i) => (i + 1) % costume.photos!.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-colors shadow-md backdrop-blur-sm"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    {/* Photo counter */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 bg-black/60 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full font-medium shadow-sm">
+                      {photoIndex + 1} / {costume.photos.length}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-800">
-                        <span className="text-gray-500">{movementLabels[movement.action] || movement.action}</span>
-                        {' '}
-                        <span className="font-medium">{(movement.user as { full_name: string })?.full_name}</span>
-                      </p>
-                      {movement.notes && (
-                        <p className="text-xs text-gray-500 mt-0.5">{movement.notes}</p>
-                      )}
-                      {movement.photo_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={movement.photo_url}
-                          alt="Foto"
-                          className="mt-2 rounded-lg max-h-32 object-cover"
-                        />
-                      )}
-                      <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(movement.created_at)}</p>
-                    </div>
-                  </div>
-                ))}
+                  </>
+                )}
+
+                {/* Delete current photo button */}
+                {(user?.role === 'coordinator' || user?.role === 'admin') && (
+                  <button
+                    onClick={() => handleRemovePhoto(costume.photos![photoIndex])}
+                    className="absolute top-3 right-3 z-20 w-8 h-8 rounded-lg bg-red-500/80 text-white flex items-center justify-center hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 shadow-sm"
+                    title="Eliminar esta foto"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                <span className="text-6xl mb-2">👗</span>
+                <p className="text-sm font-medium">Sin foto asignada</p>
               </div>
+            )}
+
+            {/* Upload overlay button */}
+            {(user?.role === 'coordinator' || user?.role === 'admin') && (
+              <>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleAddPhoto(file)
+                    e.target.value = ''
+                  }}
+                />
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 bg-white/95 hover:bg-white text-violet-700 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-md transition-all hover:shadow-lg disabled:opacity-60"
+                >
+                  {uploadingPhoto ? (
+                    <span className="animate-spin rounded-full border-2 border-violet-400 border-t-transparent w-3.5 h-3.5" />
+                  ) : (
+                    <ImagePlus className="w-3.5 h-3.5" />
+                  )}
+                  {uploadingPhoto ? 'Subiendo...' : costume.photos && costume.photos.length > 0 ? 'Añadir foto' : 'Subir foto'}
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Photo thumbnails strip */}
+          {costume.photos && costume.photos.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {costume.photos.map((photo, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setPhotoIndex(idx)}
+                  className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                    idx === photoIndex ? 'border-violet-500 shadow-md ring-2 ring-violet-200' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
             </div>
           )}
         </div>
+
       </div>
 
       {activeAction && user && (
@@ -701,6 +734,14 @@ export default function CostumeDetailPage({ params }: { params: Promise<{ id: st
           costumeId={costume.id}
           costumeName={costume.name}
           onClose={() => { setShowAddToList(false); fetchData() }}
+        />
+      )}
+
+      {zoomOpen && costume.photos?.[photoIndex] && (
+        <ImageZoom
+          src={costume.photos[photoIndex]}
+          alt={costume.name}
+          onClose={() => setZoomOpen(false)}
         />
       )}
     </div>
