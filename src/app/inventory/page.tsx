@@ -47,8 +47,6 @@ function InventoryContent() {
   const [lists, setLists] = useState<InventoryList[]>([])
   const [costumes, setCostumes] = useState<Costume[]>([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
   const [activeTab, setActiveTab] = useState<'lists' | 'costumes'>('lists')
   const [statusFilter, setStatusFilter] = useState<CostumeStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -59,8 +57,17 @@ function InventoryContent() {
   const [searchInput, setSearchInput] = useState('')
 
   const debouncedSearch = useDebounce(searchInput, 400)
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const loadingRef = useRef(false)
+
+  // Refs that always hold the latest values — safe to read inside IntersectionObserver
+  const pageRef = useRef(0)
+  const hasMoreRef = useRef(false)
+  const isFetchingRef = useRef(false)
+  const searchRef = useRef('')
+  const statusRef = useRef<CostumeStatus | null>(null)
+
+  // Keep search/status refs in sync
+  useEffect(() => { searchRef.current = debouncedSearch }, [debouncedSearch])
+  useEffect(() => { statusRef.current = statusFilter }, [statusFilter])
 
   // On mount: if ?status= is present, jump to costumes tab and set filter
   useEffect(() => {
@@ -71,7 +78,7 @@ function InventoryContent() {
     }
   }, [searchParams])
 
-  // Load lists (lightweight, no pagination needed)
+  // Load lists (lightweight, called once)
   const loadLists = useCallback(async () => {
     try {
       const data = await listService.getAll()
@@ -81,10 +88,10 @@ function InventoryContent() {
     }
   }, [])
 
-  // Load first page of costumes (reset)
-  const loadCostumes = useCallback(async (search: string, status: CostumeStatus | null) => {
-    if (loadingRef.current) return
-    loadingRef.current = true
+  // Reset and load page 0 of costumes
+  const resetAndLoad = useCallback(async (search: string, status: CostumeStatus | null) => {
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
     setLoading(true)
     try {
       const result = await costumeService.getAllPaginated({
@@ -95,79 +102,73 @@ function InventoryContent() {
       })
       setCostumes(result.data)
       setTotal(result.total)
-      setPage(0)
-      setHasMore(result.data.length === PAGE_SIZE && result.total > PAGE_SIZE)
+      pageRef.current = 0
+      hasMoreRef.current = result.data.length >= PAGE_SIZE && result.total > PAGE_SIZE
     } catch {
       toast.error('Error al cargar el inventario')
     } finally {
       setLoading(false)
-      loadingRef.current = false
+      isFetchingRef.current = false
     }
   }, [])
 
-  // Load next page for infinite scroll
-  const loadMore = useCallback(async () => {
-    if (loadingRef.current || loadingMore || !hasMore) return
-    loadingRef.current = true
+  // Load next page (called by IntersectionObserver — reads refs, not stale state)
+  const loadNextPage = useCallback(async () => {
+    if (isFetchingRef.current || !hasMoreRef.current) return
+    isFetchingRef.current = true
     setLoadingMore(true)
-    const nextPage = page + 1
+    const nextPage = pageRef.current + 1
     try {
       const result = await costumeService.getAllPaginated({
-        search: debouncedSearch || undefined,
-        status: statusFilter || undefined,
+        search: searchRef.current || undefined,
+        status: statusRef.current || undefined,
         page: nextPage,
         pageSize: PAGE_SIZE,
       })
-      setCostumes((prev) => {
-        // Deduplicate
-        const ids = new Set(prev.map((c) => c.id))
-        const newItems = result.data.filter((c) => !ids.has(c.id))
-        return [...prev, ...newItems]
-      })
-      setPage(nextPage)
-      setHasMore(result.data.length === PAGE_SIZE)
+      if (result.data.length > 0) {
+        setCostumes((prev) => {
+          const ids = new Set(prev.map((c) => c.id))
+          const newItems = result.data.filter((c) => !ids.has(c.id))
+          return [...prev, ...newItems]
+        })
+        pageRef.current = nextPage
+      }
+      hasMoreRef.current = result.data.length >= PAGE_SIZE
     } catch {
       toast.error('Error al cargar más vestuarios')
     } finally {
       setLoadingMore(false)
-      loadingRef.current = false
+      isFetchingRef.current = false
     }
-  }, [loadingMore, hasMore, page, debouncedSearch, statusFilter])
+  }, []) // No dependencies — reads refs directly
+
+  // Sentinel ref callback — attaches the IntersectionObserver
+  // Using a callback ref so it re-runs whenever the sentinel element mounts/unmounts
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadNextPage()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [loadNextPage])
 
   // Reload when search or status filter changes
   useEffect(() => {
     if (activeTab === 'costumes') {
-      loadCostumes(debouncedSearch, statusFilter)
+      resetAndLoad(debouncedSearch, statusFilter)
     }
-  }, [debouncedSearch, statusFilter, activeTab, loadCostumes])
+  }, [debouncedSearch, statusFilter, activeTab, resetAndLoad])
 
   // Load lists once on mount
   useEffect(() => {
     loadLists()
   }, [loadLists])
-
-  // Switch to costumes tab: load if not loaded yet
-  useEffect(() => {
-    if (activeTab === 'costumes' && costumes.length === 0 && !loading) {
-      loadCostumes(debouncedSearch, statusFilter)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
-
-  // Intersection observer for infinite scroll sentinel
-  useEffect(() => {
-    if (!sentinelRef.current) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore) {
-          loadMore()
-        }
-      },
-      { rootMargin: '200px' }
-    )
-    observer.observe(sentinelRef.current)
-    return () => observer.disconnect()
-  }, [hasMore, loadingMore, loadMore])
 
   const clearStatusFilter = () => {
     setStatusFilter(null)
@@ -182,9 +183,6 @@ function InventoryContent() {
   const handleTabChange = (tab: 'lists' | 'costumes') => {
     setActiveTab(tab)
     setSearchInput('')
-    if (tab === 'costumes' && costumes.length === 0) {
-      loadCostumes('', statusFilter)
-    }
   }
 
   return (
@@ -343,23 +341,20 @@ function InventoryContent() {
             )}
           </div>
 
-          {/* Infinite scroll sentinel */}
-          {!loading && hasMore && (
-            <div ref={sentinelRef} className="flex justify-center py-6">
-              {loadingMore && (
+          {/* Infinite scroll sentinel — always rendered (but only triggers when hasMoreRef is true) */}
+          {!loading && (
+            <div ref={sentinelRef} className="flex justify-center py-8">
+              {loadingMore ? (
                 <div className="flex items-center gap-2 text-sm text-gray-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Cargando más...
+                  Cargando más vestuarios...
                 </div>
-              )}
+              ) : costumes.length > 0 && costumes.length >= total ? (
+                <p className="text-xs text-gray-400">
+                  {costumes.length} de {total} prendas cargadas
+                </p>
+              ) : null}
             </div>
-          )}
-
-          {/* End of results message */}
-          {!loading && !hasMore && costumes.length > 0 && (
-            <p className="text-center text-xs text-gray-400 py-4">
-              {costumes.length} de {total} prendas mostradas
-            </p>
           )}
         </>
       )}
@@ -376,7 +371,7 @@ function InventoryContent() {
           onClose={() => setShowCreateCostume(false)}
           onSuccess={async () => {
             setShowCreateCostume(false)
-            loadCostumes(debouncedSearch, statusFilter)
+            resetAndLoad(debouncedSearch, statusFilter)
           }}
         />
       )}
@@ -386,7 +381,7 @@ function InventoryContent() {
           onClose={() => setShowBulkUpload(false)}
           onSuccess={async () => {
             setShowBulkUpload(false)
-            loadCostumes(debouncedSearch, statusFilter)
+            resetAndLoad(debouncedSearch, statusFilter)
           }}
         />
       )}
