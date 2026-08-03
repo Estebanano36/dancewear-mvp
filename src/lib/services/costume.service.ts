@@ -264,8 +264,50 @@ export const costumeService = {
       updates.current_holder_id = options?.dancerId || userId
       if (options?.eventId) updates.current_event_id = options.eventId
     } else if (finalStatus === 'available') {
+      // Fetch current event before clearing it, so we can remove from event_costumes
+      const { data: currentCostume } = await supabase
+        .from('costumes')
+        .select('current_event_id')
+        .eq('id', costumeId)
+        .single()
+
+      const currentEventId = currentCostume?.current_event_id
+
       updates.current_holder_id = undefined
       updates.current_event_id = undefined
+
+      // Update costume first
+      const { error: costumeError } = await supabase
+        .from('costumes')
+        .update(updates)
+        .eq('id', costumeId)
+
+      if (costumeError) throw costumeError
+
+      // Remove from event_costumes (so it disappears from the event's list)
+      if (currentEventId) {
+        const { error: ecErr } = await supabase
+          .from('event_costumes')
+          .delete()
+          .eq('costume_id', costumeId)
+          .eq('event_id', currentEventId)
+        if (ecErr) console.error('Error removing event_costumes on return:', ecErr)
+      }
+
+      // Record movement
+      const { error: movementError } = await supabase
+        .from('costume_movements')
+        .insert({
+          costume_id: costumeId,
+          user_id: userId,
+          event_id: currentEventId || options?.eventId,
+          action: currentAction,
+          notes: options?.notes,
+          photo_url: options?.photoUrl,
+        })
+
+      if (movementError) throw movementError
+      return
     } else if (finalStatus === 'reserved' && options?.eventId) {
       updates.current_event_id = options.eventId
       if (options?.dancerId) updates.current_holder_id = options.dancerId
