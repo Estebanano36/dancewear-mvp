@@ -13,9 +13,11 @@ import { ImageZoom } from '@/components/image-zoom'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { costumeService } from '@/lib/services/costume.service'
+import { eventService } from '@/lib/services/event.service'
+import { authService } from '@/lib/services/auth.service'
 import { useUser } from '@/hooks/use-user'
 import { formatDateTime, formatDate } from '@/utils'
-import type { Costume, CostumeMovement } from '@/types'
+import type { Costume, CostumeMovement, Event, User as UserType } from '@/types'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -37,6 +39,13 @@ function ActionModal({ costume, action, userId, onSuccess, onClose }: ActionModa
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // Checkout specific states
+  const [events, setEvents] = useState<Event[]>([])
+  const [users, setUsers] = useState<UserType[]>([])
+  const [selectedEventId, setSelectedEventId] = useState<string>('')
+  const [selectedDancerId, setSelectedDancerId] = useState<string>('')
+  const [fetchingOptions, setFetchingOptions] = useState(false)
+
   const titles = {
     checkout: 'Retirar vestuario',
     return: 'Devolver vestuario',
@@ -46,7 +55,42 @@ function ActionModal({ costume, action, userId, onSuccess, onClose }: ActionModa
     lost: 'Marcar como perdido',
   }
 
+  useEffect(() => {
+    if (action === 'checkout') {
+      const loadOptions = async () => {
+        try {
+          setFetchingOptions(true)
+          const [evList, userList] = await Promise.all([
+            eventService.getAll(),
+            authService.getUsers(),
+          ])
+          setEvents(evList)
+          setUsers(userList)
+          if (evList.length > 0) {
+            setSelectedEventId(evList[0].id)
+          }
+        } catch {
+          toast.error('Error al cargar eventos y usuarios')
+        } finally {
+          setFetchingOptions(false)
+        }
+      }
+      loadOptions()
+    }
+  }, [action])
+
   const handleSubmit = async () => {
+    if (action === 'checkout') {
+      if (!selectedEventId) {
+        toast.error('Selecciona el evento al que asignas el retiro')
+        return
+      }
+      if (!selectedDancerId) {
+        toast.error('Selecciona el bailarín al que entregas el vestuario')
+        return
+      }
+    }
+
     try {
       setLoading(true)
       let photoUrl: string | undefined
@@ -72,11 +116,18 @@ function ActionModal({ costume, action, userId, onSuccess, onClose }: ActionModa
           repair: 'repair' as const,
           lost: 'lost' as const,
         }
-        await costumeService.updateStatus(costume.id, statusMap[action as keyof typeof statusMap], userId, {
-          notes,
-          photoUrl,
-        })
-        toast.success('Estado actualizado')
+        await costumeService.updateStatus(
+          costume.id,
+          statusMap[action as keyof typeof statusMap],
+          userId,
+          {
+            eventId: action === 'checkout' ? selectedEventId : undefined,
+            dancerId: action === 'checkout' ? selectedDancerId : undefined,
+            notes,
+            photoUrl,
+          }
+        )
+        toast.success(action === 'checkout' ? 'Vestuario retirado y asignado al evento' : 'Estado actualizado')
       }
 
       onSuccess()
@@ -102,6 +153,54 @@ function ActionModal({ costume, action, userId, onSuccess, onClose }: ActionModa
               <p className="text-xs text-gray-400">{costume.code}</p>
             </div>
           </div>
+
+          {action === 'checkout' && (
+            <>
+              <div>
+                <Label htmlFor="checkout-event">1. Evento al que va la prenda *</Label>
+                {fetchingOptions ? (
+                  <p className="text-xs text-gray-400 mt-1">Cargando eventos...</p>
+                ) : events.length === 0 ? (
+                  <div className="p-3 bg-amber-50 rounded-lg text-xs text-amber-700 mt-1.5 border border-amber-200">
+                    No hay eventos creados. Crea un evento en la pestaña Eventos primero.
+                  </div>
+                ) : (
+                  <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                    <SelectTrigger id="checkout-event" className="mt-1.5">
+                      <SelectValue placeholder="Selecciona un evento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          📅 {e.name} ({formatDate(e.date)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="checkout-dancer">2. Bailarín a asignar *</Label>
+                {fetchingOptions ? (
+                  <p className="text-xs text-gray-400 mt-1">Cargando personas...</p>
+                ) : (
+                  <Select value={selectedDancerId} onValueChange={setSelectedDancerId}>
+                    <SelectTrigger id="checkout-dancer" className="mt-1.5">
+                      <SelectValue placeholder="Selecciona el bailarín o usuario" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          👤 {u.full_name} ({u.role === 'dancer' ? 'Bailarín/a' : u.role === 'coordinator' ? 'Coordinador' : 'Admin'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </>
+          )}
 
           {action === 'damage' && (
             <div>

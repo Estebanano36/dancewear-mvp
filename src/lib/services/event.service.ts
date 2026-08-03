@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import type { Event, EventCostume } from '@/types'
+import { costumeService } from '@/lib/services/costume.service'
 
 export const eventService = {
   async getAll(): Promise<Event[]> {
@@ -73,21 +74,37 @@ export const eventService = {
     if (error) throw error
   },
 
-  async assignCostume(eventId: string, costumeId: string, dancerId?: string, notes?: string): Promise<EventCostume> {
+  async assignCostume(
+    eventId: string,
+    costumeId: string,
+    dancerId?: string,
+    notes?: string,
+    status: 'borrowed' | 'reserved' = 'reserved',
+    userId?: string
+  ): Promise<EventCostume> {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('event_costumes')
-      .insert({ event_id: eventId, costume_id: costumeId, dancer_id: dancerId, notes })
+      .upsert(
+        { event_id: eventId, costume_id: costumeId, dancer_id: dancerId || null, notes },
+        { onConflict: 'event_id,costume_id' }
+      )
       .select()
       .single()
 
     if (error) throw error
 
-    // Update costume status to reserved
-    await supabase
-      .from('costumes')
-      .update({ status: 'reserved', current_event_id: eventId })
-      .eq('id', costumeId)
+    // Update costume status
+    await costumeService.updateStatus(
+      costumeId,
+      status,
+      userId || dancerId || 'system',
+      {
+        eventId,
+        dancerId,
+        notes,
+      }
+    )
 
     return data
   },

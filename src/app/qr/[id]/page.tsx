@@ -13,9 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { costumeService } from '@/lib/services/costume.service'
 import { listService } from '@/lib/services/list.service'
 import { eventService } from '@/lib/services/event.service'
+import { authService } from '@/lib/services/auth.service'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/utils'
-import type { Event, List, ListItem, Costume } from '@/types'
+import type { Event, List, ListItem, Costume, User as UserType } from '@/types'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -41,7 +42,9 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
   const [user, setUser] = useState<{ id: string; full_name: string; role: string } | null>(null)
   const [selectedAction, setSelectedAction] = useState<ActionType | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [selectedDancerId, setSelectedDancerId] = useState<string | null>(null)
   const [events, setEvents] = useState<Event[]>([])
+  const [dancers, setDancers] = useState<UserType[]>([])
   const [notes, setNotes] = useState('')
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('medium')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
@@ -68,19 +71,21 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
       setUser(userData)
 
       // Try loading a list first (lists share the same QR namespace)
-      const [maybeList, eventsData] = await Promise.all([
+      const [maybeList, eventsData, usersData] = await Promise.all([
         listService.getById(id),
         eventService.getAll(),
+        authService.getUsers(),
       ])
+
+      setEvents(eventsData)
+      setDancers(usersData)
 
       if (maybeList) {
         setList(maybeList)
-        setEvents(eventsData)
       } else {
         const maybeCostume = await costumeService.getById(id)
         if (maybeCostume) {
           setScannedCostume(maybeCostume)
-          setEvents(eventsData)
         }
       }
     } catch {
@@ -101,6 +106,11 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
 
     if (selectedAction === 'checkout' && !selectedEventId) {
       toast.error('Selecciona un evento para registrar el retiro')
+      return
+    }
+
+    if (selectedAction === 'checkout' && !selectedDancerId) {
+      toast.error('Selecciona el bailarín asignado')
       return
     }
 
@@ -145,6 +155,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
           user.id,
           {
             eventId: selectedAction === 'checkout' ? selectedEventId ?? undefined : undefined,
+            dancerId: selectedAction === 'checkout' ? selectedDancerId ?? undefined : undefined,
             notes: notes || undefined,
             photoUrl,
           }
@@ -346,22 +357,41 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
                 {selectedAction && (
                   <div className="space-y-4">
                     {selectedAction === 'checkout' && (
-                      <div>
-                        <Label>¿Para qué evento?</Label>
-                        <Select value={selectedEventId ?? 'none'} onValueChange={(value) => setSelectedEventId(value === 'none' ? null : value)}>
-                          <SelectTrigger className="mt-1.5">
-                            <SelectValue placeholder="Selecciona un evento" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Selecciona un evento</SelectItem>
-                            {events.map((event) => (
-                              <SelectItem key={event.id} value={event.id}>
-                                {event.name} – {formatDate(event.date)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <>
+                        <div>
+                          <Label>1. ¿Para qué evento? *</Label>
+                          <Select value={selectedEventId ?? 'none'} onValueChange={(value) => setSelectedEventId(value === 'none' ? null : value)}>
+                            <SelectTrigger className="mt-1.5">
+                              <SelectValue placeholder="Selecciona un evento" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Selecciona un evento</SelectItem>
+                              {events.map((event) => (
+                                <SelectItem key={event.id} value={event.id}>
+                                  📅 {event.name} – {formatDate(event.date)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label>2. Bailarín asignado *</Label>
+                          <Select value={selectedDancerId ?? 'none'} onValueChange={(value) => setSelectedDancerId(value === 'none' ? null : value)}>
+                            <SelectTrigger className="mt-1.5">
+                              <SelectValue placeholder="Selecciona el bailarín" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Selecciona el bailarín</SelectItem>
+                              {dancers.map((d) => (
+                                <SelectItem key={d.id} value={d.id}>
+                                  👤 {d.full_name} ({d.role === 'dancer' ? 'Bailarín/a' : d.role === 'coordinator' ? 'Coordinador' : 'Admin'})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
                     )}
 
                     {selectedAction === 'damage' && (

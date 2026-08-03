@@ -209,6 +209,7 @@ export const costumeService = {
     userId: string,
     options?: {
       eventId?: string
+      dancerId?: string
       notes?: string
       photoUrl?: string
       action?: string
@@ -251,8 +252,6 @@ export const costumeService = {
             .eq('id', item.id)
           if (stockErr) console.error('Error updating stock:', stockErr)
         }
-        // NOTE: List item stock is independent from the physical costume status.
-        // Do NOT override finalStatus here — the costume's own status reflects its real state.
       }
     }
 
@@ -262,11 +261,14 @@ export const costumeService = {
     }
 
     if (finalStatus === 'borrowed') {
-      updates.current_holder_id = userId
+      updates.current_holder_id = options?.dancerId || userId
       if (options?.eventId) updates.current_event_id = options.eventId
     } else if (finalStatus === 'available') {
       updates.current_holder_id = undefined
       updates.current_event_id = undefined
+    } else if (finalStatus === 'reserved' && options?.eventId) {
+      updates.current_event_id = options.eventId
+      if (options?.dancerId) updates.current_holder_id = options.dancerId
     }
 
     // Update costume
@@ -276,6 +278,22 @@ export const costumeService = {
       .eq('id', costumeId)
 
     if (costumeError) throw costumeError
+
+    // Upsert into event_costumes if eventId is provided
+    if (options?.eventId) {
+      const { error: eventCostumeErr } = await supabase
+        .from('event_costumes')
+        .upsert(
+          {
+            event_id: options.eventId,
+            costume_id: costumeId,
+            dancer_id: options?.dancerId || null,
+            notes: options?.notes || null,
+          },
+          { onConflict: 'event_id,costume_id' }
+        )
+      if (eventCostumeErr) console.error('Error upserting event_costumes:', eventCostumeErr)
+    }
 
     // Record movement
     const { error: movementError } = await supabase
