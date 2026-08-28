@@ -13,8 +13,8 @@
   body {
     @apply antialiased text-gray-900;
     background:
-      radial-gradient(circle at top, rgba(139, 92, 246, 0.10), transparent 22%),
-      radial-gradient(circle at right, rgba(56, 189, 248, 0.08), transparent 18%),
+      radial-gradient(circle at top, rgba(139, 92, 246, 0.08), transparent 22%),
+      radial-gradient(circle at right, rgba(56, 189, 248, 0.06), transparent 18%),
       linear-gradient(180deg, #f8f7ff 0%, #f5f7fb 45%, #eff4ff 100%);
     min-height: 100vh;
   }
@@ -30,13 +30,19 @@
 }
 
 @layer utilities {
+  .no-scrollbar::-webkit-scrollbar,
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar,
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
 
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  .safe-area-pb {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 
   .glass-card {

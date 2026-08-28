@@ -29,10 +29,12 @@ export const costumeService = {
 
     if (options?.status) query = query.eq('status', options.status)
     if (options?.search) {
-      const term = options.search.trim()
-      query = query.or(
-        `name.ilike.%${term}%,code.ilike.%${term}%,category.ilike.%${term}%,location.ilike.%${term}%`
-      )
+      const term = options.search.trim().replace(/[%_'"(),;]/g, '')
+      if (term) {
+        query = query.or(
+          `name.ilike.%${term}%,code.ilike.%${term}%,category.ilike.%${term}%,location.ilike.%${term}%`
+        )
+      }
     }
 
     const { data, error, count } = await query
@@ -69,9 +71,12 @@ export const costumeService = {
       if (filters?.status) query = query.eq('status', filters.status)
       if (filters?.category) query = query.eq('category', filters.category)
       if (filters?.search) {
-        query = query.or(
-          `name.ilike.%${filters.search}%,code.ilike.%${filters.search}%,category.ilike.%${filters.search}%`
-        )
+        const term = filters.search.trim().replace(/[%_'"(),;]/g, '')
+        if (term) {
+          query = query.or(
+            `name.ilike.%${term}%,code.ilike.%${term}%,category.ilike.%${term}%`
+          )
+        }
       }
 
       const { data, error } = await query

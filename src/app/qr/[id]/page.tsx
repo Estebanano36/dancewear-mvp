@@ -2,8 +2,8 @@
 
 import { useState, useEffect, use, useCallback } from 'react'
 import {
-  CheckCircle, ArrowLeft, Droplets, Wrench,
-  AlertTriangle, Package, User, Camera, Loader2
+  CheckCircle2, ArrowLeft, Droplets, Wrench,
+  AlertTriangle, Package, Camera, Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -21,18 +21,68 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+type ActionType = 'checkout' | 'return' | 'washing' | 'repair' | 'damage'
+
 export default function QRScanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
 
-  type ActionType = 'checkout' | 'return' | 'washing' | 'repair' | 'damage'
-
   const actions = [
-    { id: 'checkout' as ActionType, label: 'Retirar', icon: ArrowLeft, iconClass: 'rotate-180', bg: 'bg-amber-50', border: 'border-amber-200', color: 'text-amber-700', activeBg: 'bg-amber-500', activeText: 'text-white' },
-    { id: 'return' as ActionType, label: 'Devolver', icon: CheckCircle, iconClass: '', bg: 'bg-emerald-50', border: 'border-emerald-200', color: 'text-emerald-700', activeBg: 'bg-emerald-500', activeText: 'text-white' },
-    { id: 'washing' as ActionType, label: 'Lavado', icon: Droplets, iconClass: '', bg: 'bg-cyan-50', border: 'border-cyan-200', color: 'text-cyan-700', activeBg: 'bg-cyan-500', activeText: 'text-white' },
-    { id: 'repair' as ActionType, label: 'Arreglo', icon: Wrench, iconClass: '', bg: 'bg-orange-50', border: 'border-orange-200', color: 'text-orange-700', activeBg: 'bg-orange-500', activeText: 'text-white' },
-    { id: 'damage' as ActionType, label: 'Daño', icon: AlertTriangle, iconClass: '', bg: 'bg-red-50', border: 'border-red-200', color: 'text-red-700', activeBg: 'bg-red-500', activeText: 'text-white' },
+    {
+      id: 'checkout' as ActionType,
+      label: 'Retirar',
+      desc: 'Llevar a un show',
+      icon: ArrowLeft,
+      iconClass: 'rotate-180',
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      color: 'text-amber-700',
+      activeBg: 'bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-200',
+    },
+    {
+      id: 'return' as ActionType,
+      label: 'Devolver',
+      desc: 'Regresar a almacén',
+      icon: CheckCircle2,
+      iconClass: '',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      color: 'text-emerald-700',
+      activeBg: 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-200',
+    },
+    {
+      id: 'washing' as ActionType,
+      label: 'Lavado',
+      desc: 'Enviar a lavandería',
+      icon: Droplets,
+      iconClass: '',
+      bg: 'bg-cyan-50',
+      border: 'border-cyan-200',
+      color: 'text-cyan-700',
+      activeBg: 'bg-cyan-600 text-white border-cyan-700 shadow-md shadow-cyan-200',
+    },
+    {
+      id: 'repair' as ActionType,
+      label: 'Arreglo',
+      desc: 'Costura / modista',
+      icon: Wrench,
+      iconClass: '',
+      bg: 'bg-orange-50',
+      border: 'border-orange-200',
+      color: 'text-orange-700',
+      activeBg: 'bg-orange-500 text-white border-orange-600 shadow-md shadow-orange-200',
+    },
+    {
+      id: 'damage' as ActionType,
+      label: 'Daño',
+      desc: 'Reportar rotura o mancha',
+      icon: AlertTriangle,
+      iconClass: '',
+      bg: 'bg-red-50',
+      border: 'border-red-200',
+      color: 'text-red-700',
+      activeBg: 'bg-red-600 text-white border-red-700 shadow-md shadow-red-200',
+    },
   ]
 
   const [list, setList] = useState<List | null>(null)
@@ -89,7 +139,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
         }
       }
     } catch {
-      toast.error('Error al cargar')
+      toast.error('Error al cargar la información del código')
     } finally {
       setLoading(false)
     }
@@ -164,7 +214,7 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
 
       setDone(true)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al procesar')
+      toast.error(err instanceof Error ? err.message : 'Error al procesar la acción')
     } finally {
       setSubmitting(false)
     }
@@ -172,10 +222,11 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Cargando...</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="text-center bg-white p-8 rounded-3xl border border-gray-100 shadow-xl max-w-xs w-full">
+          <Loader2 className="w-10 h-10 animate-spin text-violet-600 mx-auto mb-3" />
+          <h3 className="font-bold text-gray-900 text-base">Cargando prenda...</h3>
+          <p className="text-xs text-gray-400 mt-1">Conectando con el inventario de Arabela</p>
         </div>
       </div>
     )
@@ -183,13 +234,15 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
 
   if (!list && !scannedCostume) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-4xl mb-3">🔍</p>
-          <h2 className="font-bold text-gray-800">No encontrado</h2>
-          <p className="text-sm text-gray-500 mt-1">El código QR no corresponde a ninguna lista o vestuario válido</p>
-          <Link href="/inventory">
-            <Button className="mt-4">Ir al inventario</Button>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="text-center bg-white p-8 rounded-3xl border border-gray-100 shadow-xl max-w-sm w-full">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 text-3xl">
+            🔍
+          </div>
+          <h2 className="font-bold text-gray-900 text-lg">Código no encontrado</h2>
+          <p className="text-sm text-gray-500 mt-1">El código escaneado no corresponde a ninguna lista o prenda registrada.</p>
+          <Link href="/inventory" className="block mt-5">
+            <Button className="w-full bg-violet-600 hover:bg-violet-700 rounded-xl">Ir al Inventario</Button>
           </Link>
         </div>
       </div>
@@ -197,465 +250,348 @@ export default function QRScanPage({ params }: { params: Promise<{ id: string }>
   }
 
   if (done) {
-    const actionLabels: Record<ActionType, string> = {
-      checkout: 'Vestuario retirado',
-      return: 'Vestuario devuelto',
-      washing: 'Enviado a lavado',
-      repair: 'Enviado a arreglo',
-      damage: 'Daño reportado',
+    const actionLabels: Record<ActionType, { title: string; color: string; desc: string }> = {
+      checkout: { title: 'Vestuario Retirado', color: 'text-amber-600', desc: 'Registrado con éxito para el show/bailarín.' },
+      return: { title: 'Vestuario Devuelto', color: 'text-emerald-600', desc: 'Marcado como disponible en el almacén.' },
+      washing: { title: 'Enviado a Lavado', color: 'text-cyan-600', desc: 'Registrado en estado de lavandería.' },
+      repair: { title: 'Enviado a Arreglo', color: 'text-orange-600', desc: 'Registrado para reparación o costura.' },
+      damage: { title: 'Daño Reportado', color: 'text-red-600', desc: 'El reporte y la foto fueron guardados con éxito.' },
     }
     const performedCostume = selectedCostume
+    const actionInfo = actionLabels[selectedAction!]
+
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center max-w-sm">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-10 h-10 text-emerald-500" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-2xl p-6 sm:p-8 max-w-sm w-full text-center">
+          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4 animate-bounce">
+            <CheckCircle2 className="w-12 h-12 text-emerald-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">
-            {actionLabels[selectedAction!]}
+
+          <h2 className={`text-xl font-black ${actionInfo.color} mb-1`}>
+            {actionInfo.title}
           </h2>
+          <p className="text-xs text-gray-500 mb-4">{actionInfo.desc}</p>
+
           {performedCostume && (
-            <p className="text-gray-500 text-sm mb-6">{performedCostume.name} · {performedCostume.code}</p>
+            <div className="bg-slate-50 rounded-2xl p-3 mb-6 border border-gray-100 flex items-center gap-3 text-left">
+              <div className="w-12 h-12 rounded-xl bg-white overflow-hidden flex-shrink-0 border border-gray-200/60 flex items-center justify-center">
+                {performedCostume.photos?.[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={performedCostume.photos[0]} alt={performedCostume.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xl">👗</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-gray-900 text-sm truncate">{performedCostume.name}</p>
+                <p className="text-xs text-gray-400 font-mono">{performedCostume.code}</p>
+              </div>
+            </div>
           )}
-          <div className="flex flex-col gap-2">
-            <Button onClick={() => {
-              loadData()
-              setDone(false)
-              setSelectedAction(null)
-              setSelectedListItem(null)
-              setNotes('')
-              setPhotoFile(null)
-              setSelectedEventId(null)
-            }}>
-              Nueva acción
+
+          <div className="flex flex-col gap-2.5">
+            <Button
+              onClick={() => {
+                loadData()
+                setDone(false)
+                setSelectedAction(null)
+                setSelectedListItem(null)
+                setNotes('')
+                setPhotoFile(null)
+                setSelectedEventId(null)
+                setSelectedDancerId(null)
+              }}
+              className="w-full h-11 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl"
+            >
+              Escanear otra prenda
             </Button>
             <Link href="/inventory">
-              <Button variant="outline" className="w-full">Ir al inventario</Button>
+              <Button variant="outline" className="w-full h-11 rounded-xl border-gray-200">
+                Ir al inventario
+              </Button>
             </Link>
           </div>
         </div>
       </div>
     )
   }
-  // If we loaded a list, show a simple list view with items
-  if (list) {
-    const selectedItem = selectedListItem
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center overflow-hidden p-1">
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Top Brand Header */}
+      <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 sticky top-0 z-30 flex items-center justify-between">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center overflow-hidden border border-gray-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain" />
           </div>
-          <span className="font-bold text-gray-900">ArabelaEspectaculos</span>
-          <span className="ml-auto text-xs text-gray-400">Lista · {list.name}</span>
-        </div>
-        <div className="p-4 max-w-3xl mx-auto">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-            <h2 className="font-bold text-lg">{list.name}</h2>
-            {list.description && <p className="text-sm text-gray-500">{list.description}</p>}
-          </div>
+          <span className="font-black text-gray-900 text-sm">Arabela Espectáculos</span>
+        </Link>
 
-          {list.items && list.items.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              {list.items.map((it) => {
-                const isSelected = selectedItem?.id === it.id
-                return (
-                  <button
-                    key={it.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedListItem(it)
-                      setSelectedAction(null)
-                      setSelectedEventId(null)
-                      setNotes('')
-                      setPhotoFile(null)
-                      setDone(false)
-                    }}
-                    className={`text-left bg-white rounded-xl border p-4 flex gap-3 items-center transition-shadow ${isSelected ? 'border-violet-500 shadow-sm' : 'border-gray-100 hover:shadow-sm'}`}
-                  >
-                    <div className="w-20 h-20 bg-gray-50 rounded overflow-hidden flex-shrink-0">
-                      {it.costume?.photos?.[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={it.costume.photos[0]} alt={it.costume.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300">👗</div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate">{it.costume?.name || '—'}</div>
-                      <div className="text-xs text-gray-400">{it.costume?.code}</div>
-                      <div className="text-sm text-gray-600 mt-2">Stock: <span className="font-medium">{it.stock}</span></div>
-                    </div>
-                  </button>
-                )
-              })}
+        {user && (
+          <span className="text-xs font-semibold text-violet-700 bg-violet-50 px-2.5 py-1 rounded-full border border-violet-100">
+            👤 {user.full_name}
+          </span>
+        )}
+      </header>
+
+      <main className="flex-1 p-4 max-w-lg mx-auto w-full space-y-4">
+        {/* If scanned entity is a List */}
+        {list && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                Lista de Show
+              </span>
             </div>
-          ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center text-gray-400">No hay elementos en esta lista</div>
-          )}
+            <h2 className="font-black text-lg text-gray-900">{list.name}</h2>
+            {list.description && <p className="text-xs text-gray-500 mt-1">{list.description}</p>}
 
-          {!selectedItem ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-sm text-gray-500">
-              Selecciona un elemento para registrar una acción como retirar, devolver, lavado, arreglo o daño.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {selectedItem.costume?.photos?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={selectedItem.costume.photos[0]} alt={selectedItem.costume.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Package className="w-7 h-7 text-violet-300" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="font-bold text-gray-900 truncate">{selectedItem.costume?.name}</h2>
-                    <p className="text-xs text-gray-400">{selectedItem.costume?.code} · {selectedItem.costume?.category} · {selectedItem.costume?.size}</p>
-                    <div className="mt-1">
-                      <StatusBadge status={selectedItem.costume?.status ?? 'available'} size="sm" />
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-gray-50 text-sm text-gray-600">
-                  Stock en lista: <span className="font-medium">{selectedItem.stock}</span>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
-                <p className="text-sm font-semibold text-gray-600">¿Qué deseas hacer con este elemento?</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {(() => {
-                    const allowed = user && (user.role === 'coordinator' || user.role === 'admin')
-                      ? actions
-                      : actions.filter(a => ['checkout', 'return', 'damage'].includes(a.id))
-
-                    return allowed.map((action) => {
-                      const Icon = action.icon
-                      const isSelected = selectedAction === action.id
-                      return (
-                        <button
-                          key={action.id}
-                          type="button"
-                          onClick={() => setSelectedAction(action.id)}
-                          className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                            isSelected
-                              ? `${action.activeBg} ${action.activeText} border-transparent shadow-md scale-105`
-                              : `${action.bg} ${action.color} ${action.border} hover:scale-102`
-                          }`}
-                        >
-                          <Icon className={`w-5 h-5 ${action.iconClass}`} />
-                          <span className="text-xs font-semibold">{action.label}</span>
-                        </button>
-                      )
-                    })
-                  })()}
-                </div>
-
-                {selectedAction && (
-                  <div className="space-y-4">
-                    {selectedAction === 'checkout' && (
-                      <>
-                        <div>
-                          <Label>1. ¿Para qué evento? *</Label>
-                          <Select value={selectedEventId ?? 'none'} onValueChange={(value) => setSelectedEventId(value === 'none' ? null : value)}>
-                            <SelectTrigger className="mt-1.5">
-                              <SelectValue placeholder="Selecciona un evento" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Selecciona un evento</SelectItem>
-                              {events.map((event) => (
-                                <SelectItem key={event.id} value={event.id}>
-                                  📅 {event.name} – {formatDate(event.date)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label>2. Bailarín asignado *</Label>
-                          <Select value={selectedDancerId ?? 'none'} onValueChange={(value) => setSelectedDancerId(value === 'none' ? null : value)}>
-                            <SelectTrigger className="mt-1.5">
-                              <SelectValue placeholder="Selecciona el bailarín" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Selecciona el bailarín</SelectItem>
-                              {dancers.map((d) => (
-                                <SelectItem key={d.id} value={d.id}>
-                                  👤 {d.full_name} ({d.role === 'dancer' ? 'Bailarín/a' : d.role === 'coordinator' ? 'Coordinador' : 'Admin'})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </>
-                    )}
-
-                    {selectedAction === 'damage' && (
-                      <div>
-                        <Label>Severidad del daño</Label>
-                        <Select value={severity} onValueChange={(v: 'low' | 'medium' | 'high') => setSeverity(v)}>
-                          <SelectTrigger className="mt-1.5">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">🟡 Leve</SelectItem>
-                            <SelectItem value="medium">🟠 Moderado</SelectItem>
-                            <SelectItem value="high">🔴 Grave</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
-                    <div>
-                      <Label htmlFor="qr-notes">Observaciones {selectedAction === 'damage' ? '(describe el daño)' : '(opcional)'}</Label>
-                      <Textarea
-                        id="qr-notes"
-                        className="mt-1.5"
-                        placeholder={selectedAction === 'damage' ? 'Describe el daño...' : 'Notas adicionales...'}
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="flex items-center gap-2 px-3 py-3 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 active:scale-95 transition-all">
-                        <Camera className="w-5 h-5 text-gray-400" />
-                        <span className="text-sm text-gray-500 flex-1">
-                          {photoFile ? photoFile.name : 'Tomar foto (opcional)'}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                        />
-                      </label>
-                    </div>
-
-                    <Button
-                      onClick={handleSubmit}
-                      loading={submitting}
-                      size="xl"
-                      className="w-full"
-                      variant={selectedAction === 'damage' ? 'destructive' : selectedAction === 'return' ? 'success' : 'default'}
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <p className="text-xs font-bold text-gray-700 mb-2">Selecciona la prenda de la lista:</p>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {list.items?.map((it) => {
+                  const isSelected = selectedListItem?.id === it.id
+                  return (
+                    <button
+                      key={it.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedListItem(it)
+                        setSelectedAction(null)
+                        setNotes('')
+                        setPhotoFile(null)
+                      }}
+                      className={`w-full text-left p-2.5 rounded-2xl border transition-all flex items-center gap-3 ${
+                        isSelected
+                          ? 'border-violet-600 bg-violet-50/50 shadow-sm'
+                          : 'border-gray-200/80 bg-white hover:bg-slate-50'
+                      }`}
                     >
-                      {submitting ? 'Procesando...' : 'Confirmar acción'}
-                    </Button>
-                  </div>
+                      <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        {it.costume?.photos?.[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={it.costume.photos[0]} alt={it.costume.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-base">👗</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-xs text-gray-900 truncate">{it.costume?.name}</p>
+                        <p className="text-[11px] text-gray-400 font-mono">{it.costume?.code}</p>
+                        <p className="text-[11px] text-gray-600 mt-0.5">Stock: <span className="font-bold">{it.stock}</span></p>
+                      </div>
+                      {isSelected && (
+                        <div className="w-5 h-5 rounded-full bg-violet-600 text-white flex items-center justify-center text-xs">✓</div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Costume Overview Card */}
+        {selectedCostume && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="flex p-4 gap-4 items-center">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50 flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-100 shadow-inner">
+                {selectedCostume.photos?.[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={selectedCostume.photos[0]} alt={selectedCostume.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Package className="w-8 h-8 text-violet-300" />
                 )}
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center overflow-hidden p-1">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Logo.jpeg" alt="ArabelaEspectaculos" className="w-full h-full object-contain" />
-        </div>
-        <span className="font-bold text-gray-900">ArabelaEspectaculos</span>
-        {user && (
-          <span className="ml-auto text-xs text-gray-400">{user.full_name}</span>
-        )}
-      </div>
-
-      <div className="p-4 max-w-md mx-auto">
-        {/* Costume info */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {selectedCostume?.photos?.[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={selectedCostume.photos[0]} alt={selectedCostume.name} className="w-full h-full object-cover" />
-              ) : (
-                <Package className="w-7 h-7 text-violet-300" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-gray-900 truncate">{selectedCostume?.name}</h2>
-              <p className="text-xs text-gray-400">{selectedCostume?.code} · {selectedCostume?.category} · {selectedCostume?.size}</p>
-              <div className="mt-1">
-                {selectedCostume?.status && <StatusBadge status={selectedCostume.status} size="sm" />}
-              </div>
-            </div>
-          </div>
-
-          {(selectedCostume?.current_holder || selectedCostume?.current_event) && (
-            <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
-              {selectedCostume?.current_holder && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <User className="w-3.5 h-3.5 text-gray-400" />
-                  Con: <span className="font-medium">{selectedCostume.current_holder.full_name}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  {selectedCostume.status && <StatusBadge status={selectedCostume.status} size="sm" />}
+                  {selectedCostume.size && (
+                    <span className="text-[11px] font-bold bg-slate-100 text-gray-700 px-2 py-0.5 rounded-md">
+                      Talla {selectedCostume.size}
+                    </span>
+                  )}
                 </div>
-              )}
-              {selectedCostume?.current_event && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <Package className="w-3.5 h-3.5 text-gray-400" />
-                  Evento: <span className="font-medium">{selectedCostume.current_event.name}</span>
+                <h2 className="font-black text-gray-900 text-base leading-tight truncate">{selectedCostume.name}</h2>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{selectedCostume.code} · {selectedCostume.category}</p>
+              </div>
+            </div>
+
+            {(selectedCostume.current_holder || selectedCostume.current_event) && (
+              <div className="bg-slate-50/80 px-4 py-2.5 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs">
+                {selectedCostume.current_holder && (
+                  <span className="text-amber-800 font-medium">
+                    👤 En poder de: <strong>{selectedCostume.current_holder.full_name}</strong>
+                  </span>
+                )}
+                {selectedCostume.current_event && (
+                  <span className="text-indigo-800 font-medium">
+                    🎭 Evento: <strong>{selectedCostume.current_event.name}</strong>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Action Prompt and Big Touch Buttons */}
+        {selectedCostume && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-sm">
+                ¿Qué deseas hacer con esta prenda?
+              </h3>
+              <span className="text-[11px] text-gray-400">Toca una opción</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {(() => {
+                const allowed = user && (user.role === 'coordinator' || user.role === 'admin')
+                  ? actions
+                  : actions.filter(a => ['checkout', 'return', 'damage'].includes(a.id))
+
+                return allowed.map((action) => {
+                  const Icon = action.icon
+                  const isSelected = selectedAction === action.id
+                  return (
+                    <button
+                      key={action.id}
+                      type="button"
+                      onClick={() => setSelectedAction(action.id)}
+                      className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col text-left justify-between gap-2.5 ${
+                        isSelected
+                          ? action.activeBg
+                          : `${action.bg} ${action.color} ${action.border} hover:shadow-sm`
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <Icon className={`w-5 h-5 ${action.iconClass}`} />
+                        {isSelected && <span className="text-xs font-black">●</span>}
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm leading-none">{action.label}</p>
+                        <p className={`text-[10px] mt-1 line-clamp-1 ${isSelected ? 'text-white/90' : 'text-gray-500'}`}>
+                          {action.desc}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })
+              })()}
+            </div>
+
+            {/* Action Details Form Card */}
+            {selectedAction && (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-md p-5 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                {selectedAction === 'checkout' && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs font-bold text-gray-700">1. ¿Para qué evento? *</Label>
+                      <Select
+                        value={selectedEventId ?? 'none'}
+                        onValueChange={(val) => setSelectedEventId(val === 'none' ? null : val)}
+                      >
+                        <SelectTrigger className="mt-1 h-11 rounded-xl">
+                          <SelectValue placeholder="Selecciona un evento" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="none">Seleccionar evento...</SelectItem>
+                          {events.map((ev) => (
+                            <SelectItem key={ev.id} value={ev.id}>
+                              🎭 {ev.name} ({formatDate(ev.date)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-bold text-gray-700">2. Bailarín / Responsable asignado *</Label>
+                      <Select
+                        value={selectedDancerId ?? 'none'}
+                        onValueChange={(val) => setSelectedDancerId(val === 'none' ? null : val)}
+                      >
+                        <SelectTrigger className="mt-1 h-11 rounded-xl">
+                          <SelectValue placeholder="Selecciona el bailarín" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="none">Seleccionar persona...</SelectItem>
+                          {dancers.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              👤 {d.full_name} ({d.role === 'dancer' ? 'Bailarín' : 'Staff'})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAction === 'damage' && (
+                  <div>
+                    <Label className="text-xs font-bold text-gray-700">Nivel de gravedad del daño</Label>
+                    <Select value={severity} onValueChange={(v: 'low' | 'medium' | 'high') => setSeverity(v)}>
+                      <SelectTrigger className="mt-1 h-11 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="low">🟡 Daño Leve (Mancha lavable, detalle menor)</SelectItem>
+                        <SelectItem value="medium">🟠 Daño Moderado (Requiere costura o ajuste)</SelectItem>
+                        <SelectItem value="high">🔴 Daño Grave (Prenda rota o inutilizable)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="action-notes" className="text-xs font-bold text-gray-700">
+                    {selectedAction === 'damage' ? 'Descripción del daño *' : 'Notas u observaciones (opcional)'}
+                  </Label>
+                  <Textarea
+                    id="action-notes"
+                    placeholder={
+                      selectedAction === 'damage'
+                        ? 'Describe brevemente qué le ocurrió a la prenda...'
+                        : 'Ej. Entregado con todos los accesorios completos...'
+                    }
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="mt-1 rounded-xl text-sm"
+                    rows={2}
+                  />
                 </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        {/* Action selector */}
-        <p className="text-sm font-semibold text-gray-600 mb-3">¿Qué deseas hacer?</p>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {(() => {
-            const allowed = user && (user.role === 'coordinator' || user.role === 'admin')
-              ? actions
-              : actions.filter(a => ['checkout', 'return', 'damage'].includes(a.id))
-            return allowed.map((action) => {
-            const Icon = action.icon
-            const isSelected = selectedAction === action.id
-            return (
-              <button
-                key={action.id}
-                onClick={() => setSelectedAction(action.id)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                  isSelected
-                    ? `${action.activeBg} ${action.activeText} border-transparent shadow-md scale-105`
-                    : `${action.bg} ${action.color} ${action.border} hover:scale-102`
-                }`}
-              >
-                <Icon className={`w-5 h-5 ${action.iconClass}`} />
-                <span className="text-xs font-semibold">{action.label}</span>
-              </button>
-            )
-            })
-          })()}
-        </div>
+                {/* Photo upload */}
+                <div>
+                  <label className="flex items-center gap-2.5 p-3 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
+                    <Camera className="w-5 h-5 text-violet-600 flex-shrink-0" />
+                    <span className="text-xs text-gray-600 font-medium flex-1 truncate">
+                      {photoFile ? `📸 ${photoFile.name}` : selectedAction === 'damage' ? 'Tomar foto del daño (requerido)' : 'Tomar foto de respaldo (opcional)'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                </div>
 
-        {/* Action form */}
-        {selectedAction && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
-            {selectedAction === 'checkout' && (
-              <div>
-                <Label>¿Para qué evento?</Label>
-                <Select value={selectedEventId ?? 'none'} onValueChange={(value) => setSelectedEventId(value === 'none' ? null : value)}>
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue placeholder="Selecciona un evento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Selecciona un evento</SelectItem>
-                    {events.map((event) => (
-                      <SelectItem key={event.id} value={event.id}>
-                        {event.name} – {formatDate(event.date)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/* Submit button */}
+                <Button
+                  onClick={handleSubmit}
+                  loading={submitting}
+                  className="w-full h-12 text-sm font-bold rounded-2xl bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200"
+                >
+                  {submitting ? 'Guardando registro...' : 'Confirmar Registro'}
+                </Button>
               </div>
-            )}
-
-            {selectedAction === 'damage' && (
-              <div>
-                <Label>Severidad del daño</Label>
-                <Select value={severity} onValueChange={(v: 'low' | 'medium' | 'high') => setSeverity(v)}>
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">🟡 Leve</SelectItem>
-                    <SelectItem value="medium">🟠 Moderado</SelectItem>
-                    <SelectItem value="high">🔴 Grave</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div>
-              <Label htmlFor="qr-notes">
-                Observaciones {selectedAction === 'damage' ? '(describe el daño)' : '(opcional)'}
-              </Label>
-              <Textarea
-                id="qr-notes"
-                className="mt-1.5"
-                placeholder={selectedAction === 'damage' ? 'Describe el daño...' : 'Notas adicionales...'}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <label className="flex items-center gap-2 px-3 py-3 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 active:scale-95 transition-all">
-                <Camera className="w-5 h-5 text-gray-400" />
-                <span className="text-sm text-gray-500 flex-1">
-                  {photoFile ? photoFile.name : 'Tomar foto (opcional)'}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                />
-              </label>
-            </div>
-
-            <Button
-              onClick={handleSubmit}
-              loading={submitting}
-              size="xl"
-              className="w-full"
-              variant={selectedAction === 'damage' ? 'destructive' : selectedAction === 'return' ? 'success' : 'default'}
-            >
-              {submitting ? 'Procesando...' : 'Confirmar acción'}
-            </Button>
-            {selectedAction === 'checkout' && (
-              <Button
-                onClick={async () => {
-                  if (!user || !selectedCostume) return
-                  if (!selectedEventId) {
-                    toast.error('Selecciona un evento para asignar el vestuario a tu cuenta')
-                    return
-                  }
-                  try {
-                    setSubmitting(true)
-                    const res = await fetch('/api/costumes/assign', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ costumeId: selectedCostume.id, eventId: selectedEventId }),
-                    })
-                    const json = await res.json()
-                    if (!res.ok) throw new Error(json?.error || 'Error al asignar')
-                    toast.success('Vestuario asignado a tu cuenta')
-                    setDone(true)
-                  } catch (err) {
-                    toast.error(err instanceof Error ? err.message : 'Error')
-                  } finally {
-                    setSubmitting(false)
-                  }
-                }}
-                size="xl"
-                className="w-full mt-2"
-                variant="secondary"
-              >
-                Asignar a mi cuenta
-              </Button>
             )}
           </div>
         )}
-
-        {!user && (
-          <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-sm text-amber-700 text-center">
-            Debes <Link href="/login" className="font-bold underline">iniciar sesión</Link> para realizar acciones
-          </div>
-        )}
-      </div>
+      </main>
     </div>
   )
 }

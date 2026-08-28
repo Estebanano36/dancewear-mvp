@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/layout/sidebar'
 import { BottomNav } from '@/components/layout/bottom-nav'
 
-export default async function InventoryLayout({ children }: { children: React.ReactNode }) {
+export default async function ListsLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user: authUser } } = await supabase.auth.getUser()
 

@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/layout/sidebar'
+import { BottomNav } from '@/components/layout/bottom-nav'
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function EventsLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user: authUser } } = await supabase.auth.getUser()
 
@@ -16,11 +17,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-slate-50/50">
       <Sidebar user={user} />
-      <main className="flex-1 min-w-0 md:p-6 p-4 pt-16 md:pt-6">
+      <main className="flex-1 min-w-0 md:p-6 p-4 pt-16 md:pt-6 pb-24 md:pb-6">
         {children}
       </main>
+      <BottomNav />
     </div>
   )
 }

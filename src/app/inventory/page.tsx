@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { Search, FolderPlus, Plus, Upload, X, Loader2 } from 'lucide-react'
+import { Search, FolderPlus, Plus, Upload, X, Loader2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -16,8 +16,8 @@ import Link from 'next/link'
 import CreateListModal from '@/components/lists/create-list-modal'
 import { CreateCostumeModal } from '@/components/costumes/create-costume-modal'
 import { BulkUploadModal } from '@/components/costumes/bulk-upload-modal'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { StatusBadge } from '@/components/ui/status-badge'
+import { useSearchParams } from 'next/navigation'
+import { CostumeCard } from '@/components/costumes/costume-card'
 
 const STATUS_LABELS: Record<string, string> = {
   available: 'Disponibles',
@@ -27,6 +27,19 @@ const STATUS_LABELS: Record<string, string> = {
   lost: 'Perdidos',
   reserved: 'Reservados',
 }
+
+const FILTER_CHIPS = [
+  { id: 'all', label: '✨ Todos', type: 'all' },
+  { id: 'available', label: '🟢 Disponibles', type: 'status', value: 'available' },
+  { id: 'borrowed', label: '🟡 Prestados', type: 'status', value: 'borrowed' },
+  { id: 'washing', label: '🧼 En lavado', type: 'status', value: 'washing' },
+  { id: 'repair', label: '🪡 En arreglo', type: 'status', value: 'repair' },
+  { id: 'vestido', label: '👗 Vestidos', type: 'search', value: 'vestido' },
+  { id: 'tocado', label: '🎩 Tocados', type: 'search', value: 'tocado' },
+  { id: 'calzado', label: '👠 Calzado', type: 'search', value: 'calzado' },
+  { id: 'accesorio', label: '🪄 Accesorios', type: 'search', value: 'accesorio' },
+  { id: 'traje', label: '✨ Trajes', type: 'search', value: 'traje' },
+]
 
 const PAGE_SIZE = 60
 
@@ -42,12 +55,11 @@ function useDebounce<T>(value: T, delay: number): T {
 function InventoryContent() {
   const { user } = useUser()
   const searchParams = useSearchParams()
-  const router = useRouter()
 
   const [lists, setLists] = useState<InventoryList[]>([])
   const [costumes, setCostumes] = useState<Costume[]>([])
   const [total, setTotal] = useState(0)
-  const [activeTab, setActiveTab] = useState<'lists' | 'costumes'>('lists')
+  const [activeTab, setActiveTab] = useState<'costumes' | 'lists'>('costumes')
   const [statusFilter, setStatusFilter] = useState<CostumeStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -55,6 +67,7 @@ function InventoryContent() {
   const [showCreateCostume, setShowCreateCostume] = useState(false)
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   const [searchInput, setSearchInput] = useState('')
+  const [activeChip, setActiveChip] = useState('all')
 
   const debouncedSearch = useDebounce(searchInput, 400)
 
@@ -69,16 +82,17 @@ function InventoryContent() {
   useEffect(() => { searchRef.current = debouncedSearch }, [debouncedSearch])
   useEffect(() => { statusRef.current = statusFilter }, [statusFilter])
 
-  // On mount: if ?status= is present, jump to costumes tab and set filter
+  // On mount: if ?status= is present, set filter
   useEffect(() => {
     const s = searchParams.get('status') as CostumeStatus | null
     if (s && Object.keys(STATUS_LABELS).includes(s)) {
       setActiveTab('costumes')
       setStatusFilter(s)
+      setActiveChip(s)
     }
   }, [searchParams])
 
-  // Load lists (lightweight, called once)
+  // Load lists
   const loadLists = useCallback(async () => {
     try {
       const data = await listService.getAll()
@@ -112,7 +126,7 @@ function InventoryContent() {
     }
   }, [])
 
-  // Load next page (called by IntersectionObserver — reads refs, not stale state)
+  // Load next page
   const loadNextPage = useCallback(async () => {
     if (isFetchingRef.current || !hasMoreRef.current) return
     isFetchingRef.current = true
@@ -140,10 +154,8 @@ function InventoryContent() {
       setLoadingMore(false)
       isFetchingRef.current = false
     }
-  }, []) // No dependencies — reads refs directly
+  }, [])
 
-  // Sentinel ref callback — attaches the IntersectionObserver
-  // Using a callback ref so it re-runs whenever the sentinel element mounts/unmounts
   const sentinelRef = useCallback((node: HTMLDivElement | null) => {
     if (!node) return
     const observer = new IntersectionObserver(
@@ -158,21 +170,39 @@ function InventoryContent() {
     return () => observer.disconnect()
   }, [loadNextPage])
 
-  // Reload when search or status filter changes
   useEffect(() => {
     if (activeTab === 'costumes') {
       resetAndLoad(debouncedSearch, statusFilter)
     }
   }, [debouncedSearch, statusFilter, activeTab, resetAndLoad])
 
-  // Load lists once on mount
   useEffect(() => {
     loadLists()
   }, [loadLists])
 
-  const clearStatusFilter = () => {
-    setStatusFilter(null)
-    router.replace('/inventory', { scroll: false })
+  const handleChipClick = (chip: typeof FILTER_CHIPS[number]) => {
+    setActiveChip(chip.id)
+    if (chip.type === 'all') {
+      setStatusFilter(null)
+      setSearchInput('')
+    } else if (chip.type === 'status') {
+      setStatusFilter(chip.value as CostumeStatus)
+    } else if (chip.type === 'search') {
+      setStatusFilter(null)
+      setSearchInput(chip.value!)
+    }
+  }
+
+  const handleDeleteCostume = async (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar este vestuario?')) return
+    try {
+      await costumeService.delete(id)
+      setCostumes((prev) => prev.filter((c) => c.id !== id))
+      setTotal((prev) => Math.max(0, prev - 1))
+      toast.success('Vestuario eliminado')
+    } catch {
+      toast.error('Error al eliminar vestuario')
+    }
   }
 
   const filteredLists = lists.filter((list) =>
@@ -180,113 +210,185 @@ function InventoryContent() {
     (list.description || '').toLowerCase().includes(searchInput.trim().toLowerCase())
   )
 
-  const handleTabChange = (tab: 'lists' | 'costumes') => {
-    setActiveTab(tab)
-    setSearchInput('')
-  }
-
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-6">
+    <div className="space-y-5 max-w-7xl mx-auto">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Inventario</h1>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">
+            Inventario de Vestuarios
+          </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {loading ? 'Cargando...' : activeTab === 'lists'
-              ? `${filteredLists.length} listas`
-              : `${costumes.length} de ${total} vestuarios`}
+            {loading ? 'Cargando prendas...' : activeTab === 'costumes'
+              ? `${total} prendas registradas con fotos de catálogo`
+              : `${filteredLists.length} colecciones y listas creadas`}
           </p>
         </div>
-        <div className="flex gap-2">
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
           {(user?.role === 'coordinator' || user?.role === 'admin') && (
             <>
-              <Button onClick={() => setShowCreateCostume(true)} size="sm">
-                <Plus className="w-4 h-4" />
-                Nuevo vestuario
+              <Button
+                onClick={() => setShowCreateCostume(true)}
+                className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl shadow-md shadow-violet-200 font-semibold"
+                size="sm"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Nueva Prenda
               </Button>
-              <Button onClick={() => setShowBulkUpload(true)} size="sm" variant="outline">
-                <Upload className="w-4 h-4" />
-                Carga masiva (CSV)
+              <Button
+                onClick={() => setShowCreateList(true)}
+                variant="outline"
+                size="sm"
+                className="rounded-xl border-gray-200 hover:bg-violet-50 hover:border-violet-200"
+              >
+                <FolderPlus className="w-4 h-4 mr-1.5" />
+                Nueva Lista
               </Button>
-              <Button onClick={() => setShowCreateList(true)} size="sm" variant="outline">
-                <FolderPlus className="w-4 h-4" />
-                Nueva lista
+              <Button
+                onClick={() => setShowBulkUpload(true)}
+                variant="outline"
+                size="sm"
+                className="rounded-xl border-gray-200 hover:bg-gray-50"
+              >
+                <Upload className="w-4 h-4 mr-1.5" />
+                Carga Masiva
               </Button>
             </>
           )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-gray-100 mb-6">
+      {/* Main Tabs (Prendas vs Listas) */}
+      <div className="flex items-center gap-2 p-1 bg-slate-100/80 rounded-2xl w-fit border border-gray-200/60">
         <button
-          onClick={() => handleTabChange('lists')}
-          className={`pb-3 text-sm font-semibold border-b-2 px-1 transition-all duration-150 ${
-            activeTab === 'lists'
-              ? 'border-violet-600 text-violet-600'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          Colecciones / Listas
-        </button>
-        <button
-          onClick={() => handleTabChange('costumes')}
-          className={`pb-3 text-sm font-semibold border-b-2 px-1 transition-all duration-150 ${
+          onClick={() => { setActiveTab('costumes'); setSearchInput(''); }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
             activeTab === 'costumes'
-              ? 'border-violet-600 text-violet-600'
-              : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'bg-white text-violet-800 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Prendas individuales
+          <span>👗</span>
+          Prendas Individuales
+          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-violet-100 text-violet-700">
+            {total}
+          </span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('lists'); setSearchInput(''); }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
+            activeTab === 'lists'
+              ? 'bg-white text-violet-800 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <span>📋</span>
+          Colecciones / Listas
+          <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-gray-200 text-gray-700">
+            {lists.length}
+          </span>
         </button>
       </div>
 
-      {/* Filters bar */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4">
-        <div className="flex flex-col sm:flex-row gap-3 items-center">
+      {/* Search and Quick Filter Chips */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 sm:p-4 space-y-3">
+        {/* Search Bar */}
+        <div className="relative">
           <Input
-            placeholder={activeTab === 'lists' ? "Buscar listas por nombre o descripción..." : "Buscar prendas por nombre, código, categoría o ubicación..."}
-            leftIcon={<Search className="w-4 h-4" />}
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="flex-1"
-          />
-          {/* Active status filter pill */}
-          {activeTab === 'costumes' && statusFilter && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-sm font-medium flex-shrink-0">
-              <StatusBadge status={statusFilter} />
-              <button
-                onClick={clearStatusFilter}
-                className="ml-1 text-violet-400 hover:text-violet-700 transition-colors"
-                title="Quitar filtro"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-          <div className="text-sm text-gray-500 flex-shrink-0">
-            {activeTab === 'lists'
-              ? `${filteredLists.length} ${filteredLists.length === 1 ? 'lista' : 'listas'}`
-              : loading ? '...' : `${total} ${total === 1 ? 'prenda' : 'prendas'}`
+            placeholder={
+              activeTab === 'costumes'
+                ? "Buscar por nombre, código (ej. VEST-01), categoría o ubicación..."
+                : "Buscar listas por nombre o show..."
             }
-          </div>
+            leftIcon={<Search className="w-4 h-4 text-gray-400" />}
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value)
+              if (activeChip !== 'all') setActiveChip('all')
+            }}
+            className="h-11 rounded-xl bg-slate-50/70 border-gray-200 focus:bg-white text-sm"
+          />
+          {searchInput && (
+            <button
+              onClick={() => setSearchInput('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-md"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
+
+        {/* Horizontal Scrollable Filter Chips (For Costumes) */}
+        {activeTab === 'costumes' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar text-xs">
+            {FILTER_CHIPS.map((chip) => {
+              const isSelected = activeChip === chip.id
+              return (
+                <button
+                  key={chip.id}
+                  onClick={() => handleChipClick(chip)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-xl font-medium transition-all duration-150 border ${
+                    isSelected
+                      ? 'bg-violet-600 text-white border-violet-600 shadow-sm shadow-violet-200 font-semibold'
+                      : 'bg-white text-gray-700 border-gray-200/80 hover:bg-violet-50/50 hover:border-violet-200'
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
+      {/* Content Rendering */}
       {activeTab === 'lists' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {lists.length === 0 && !loading ? (
-            <div className="col-span-full py-16 text-center text-gray-400">
-              <p className="text-4xl mb-3">📋</p>
-              <p className="font-medium">No se encontraron listas</p>
+          {filteredLists.length === 0 && !loading ? (
+            <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-violet-50 text-violet-500 flex items-center justify-center mx-auto mb-3 text-3xl">
+                📋
+              </div>
+              <h3 className="font-bold text-gray-900 text-base">No se encontraron listas</h3>
+              <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                Crea una lista para agrupar vestuarios por show o presentación.
+              </p>
+              {(user?.role === 'coordinator' || user?.role === 'admin') && (
+                <Button
+                  onClick={() => setShowCreateList(true)}
+                  className="mt-4 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs"
+                >
+                  Crear primera lista
+                </Button>
+              )}
             </div>
           ) : (
             filteredLists.map((list) => (
-              <Link key={list.id} href={`/lists/${list.id}`} className="block">
-                <div className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow h-full">
-                  <div className="font-semibold text-gray-900 text-lg">{list.name}</div>
-                  <p className="text-sm text-gray-500 mt-2 truncate">{list.description || 'Sin descripción'}</p>
-                  <div className="text-xs text-gray-400 mt-4">Creada el {formatDate(list.created_at)}</div>
+              <Link key={list.id} href={`/lists/${list.id}`} className="block group">
+                <div className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-lg transition-all duration-200 h-full flex flex-col justify-between group-hover:-translate-y-0.5">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-mono text-gray-400">
+                        {formatDate(list.created_at)}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-base group-hover:text-violet-700 transition-colors">
+                      {list.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">
+                      {list.description || 'Sin descripción adicional'}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-violet-600">
+                    <span>Ver vestuarios incluidos</span>
+                    <span>→</span>
+                  </div>
                 </div>
               </Link>
             ))
@@ -294,64 +396,64 @@ function InventoryContent() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Rich Grid of Costume Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
             {loading ? (
-              [...Array(12)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden animate-pulse h-24" />
+              [...Array(8)].map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-pulse h-80 flex flex-col"
+                >
+                  <div className="h-52 bg-gray-100" />
+                  <div className="p-4 space-y-2 flex-1">
+                    <div className="h-4 bg-gray-100 rounded w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  </div>
+                </div>
               ))
             ) : costumes.length === 0 ? (
-              <div className="col-span-full py-16 text-center text-gray-400">
-                <p className="text-4xl mb-3">👗</p>
-                <p className="font-medium">No se encontraron vestuarios</p>
+              <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-3 text-3xl">
+                  ✨
+                </div>
+                <h3 className="font-bold text-gray-900 text-base">No hay prendas que coincidan</h3>
+                <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                  Prueba cambiando los filtros o la búsqueda para encontrar el vestuario deseado.
+                </p>
+                <Button
+                  onClick={() => {
+                    setActiveChip('all')
+                    setStatusFilter(null)
+                    setSearchInput('')
+                  }}
+                  variant="outline"
+                  className="mt-4 rounded-xl text-xs"
+                >
+                  Restablecer filtros
+                </Button>
               </div>
             ) : (
               costumes.map((costume) => (
-                <Link key={costume.id} href={`/inventory/${costume.id}`} className="block">
-                  <div className="bg-white rounded-xl border border-gray-100 p-4 flex gap-3 items-center hover:shadow-md transition-shadow h-full">
-                    <div className="w-14 h-14 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0 relative border border-gray-100 flex items-center justify-center">
-                      {costume.photos?.[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={costume.photos[0]}
-                          alt={costume.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span className="text-2xl">👗</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 truncate text-sm">{costume.name}</div>
-                      <div className="text-[11px] text-gray-400 font-mono mt-0.5">{costume.code}</div>
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 font-semibold">
-                          {costume.category}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gray-50 text-gray-600 font-medium font-mono border border-gray-100">
-                          Talla {costume.size}
-                        </span>
-                        <StatusBadge status={costume.status} className="text-[10px] px-1.5 py-0.5" />
-                      </div>
-                    </div>
-                  </div>
-                </Link>
+                <CostumeCard
+                  key={costume.id}
+                  costume={costume}
+                  onDelete={handleDeleteCostume}
+                />
               ))
             )}
           </div>
 
-          {/* Infinite scroll sentinel — always rendered (but only triggers when hasMoreRef is true) */}
+          {/* Infinite scroll sentinel */}
           {!loading && (
             <div ref={sentinelRef} className="flex justify-center py-8">
               {loadingMore ? (
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                <div className="flex items-center gap-2 text-xs font-semibold text-violet-700 bg-violet-50 px-4 py-2 rounded-full border border-violet-200">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   Cargando más vestuarios...
                 </div>
               ) : costumes.length > 0 && costumes.length >= total ? (
                 <p className="text-xs text-gray-400">
-                  {costumes.length} de {total} prendas cargadas
+                  Has visualizado las {total} prendas del inventario 🎉
                 </p>
               ) : null}
             </div>
@@ -359,6 +461,7 @@ function InventoryContent() {
         </>
       )}
 
+      {/* Modals */}
       {showCreateList && (
         <CreateListModal
           onClose={() => setShowCreateList(false)}
@@ -391,7 +494,7 @@ function InventoryContent() {
 
 export default function InventoryPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-400">Cargando...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-gray-400">Cargando catálogo...</div>}>
       <InventoryContent />
     </Suspense>
   )
